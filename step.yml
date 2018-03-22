@@ -1,0 +1,55 @@
+title: Android Build
+summary: Builds your Android project with gradle.
+description: Builds your Android project with gradle.
+website: https://github.com/bitrise-steplib/bitrise-step-android-build
+source_code_url: https://github.com/bitrise-steplib/bitrise-step-android-build
+support_url: https://github.com/bitrise-steplib/bitrise-step-android-build/issues
+host_os_tags:
+  - osx-10.10
+  - ubuntu-16.04
+
+project_type_tags:
+  - android
+  - react-native
+
+type_tags:
+  - test
+
+is_requires_admin_user: true
+is_always_run: false
+is_skippable: false
+
+toolkit:
+  go:
+    package_name: github.com/bitrise-steplib/bitrise-step-android-build
+
+inputs:
+  - project_location: $BITRISE_SOURCE_DIR
+    opts:
+      title: Project Location
+      summary: "The root directory of your android project, e.g.: where your root build gradle file exist (also gradlew, settings.gradle, etc...)"
+      description: "The root directory of your android project, e.g.: where your root build gradle file exist (also gradlew, settings.gradle, etc...)"
+      is_required: true
+  - module: ""
+    opts:
+      title: Module
+      summary: |
+        Set the module that you want to build. To see your available modules please open your project in Android Studio and go in [Project Structure] and see the list on the left.
+      description: |
+        Set the module that you want to build. To see your available modules please open your project in Android Studio and go in [Project Structure] and see the list on the left.
+      is_required: false
+  - variant: ""
+    opts:
+      title: Variant
+      summary: |
+        Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
+      description: |
+        Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
+      is_required: false
+  - report_path_pattern: "*/build/outputs/apk/*.apk"
+    opts:
+      category: APK Export Options
+      title: APK location pattern
+      summary: Will find the APK files with the given pattern.
+      description: Will find the APK files with the given pattern.
+      is_required: true
