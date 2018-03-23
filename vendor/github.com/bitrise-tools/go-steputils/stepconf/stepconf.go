@@ -53,7 +53,7 @@ func Print(config interface{}) {
 	v := reflect.ValueOf(config)
 	t := reflect.TypeOf(config)
 
-	log.Infof("%s:\n", t.Name())
+	log.Infof("%s:", t.Name())
 	for i := 0; i < t.NumField(); i++ {
 		fmt.Printf("- %s: %v\n", t.Field(i).Name, v.Field(i).Interface())
 	}
@@ -165,10 +165,33 @@ func checkPath(path string, dir bool) error {
 	return nil
 }
 
+// contains reports whether s is within the value options, where value options
+// are parsed from opt, which format's is opt[item1,item2,item3]. If an option
+// contains commas, it should be single quoted (eg. opt[item1,'item2,item3']).
 func contains(s, opt string) bool {
-	// TODO: improve readability.
-	for _, o := range strings.Split(opt[strings.Index(opt, "[")+1:len(opt)-1], ",") {
-		if o == s {
+	opt = strings.TrimSuffix(strings.TrimPrefix(opt, "opt["), "]")
+	var valueOpts []string
+	if strings.Contains(opt, "'") {
+		// The single quotes separate the options with comma and without comma
+		// Eg. "a,b,'c,d',e" will results "a,b," "c,d" and ",e" strings.
+		for _, s := range strings.Split(opt, "'") {
+			switch {
+			case s == "," || s == "":
+			case !strings.HasPrefix(s, ",") && !strings.HasSuffix(s, ","):
+				// If a string doesn't starts nor ends with a comma it means it's an option which
+				// contains comma, so we just append it to valueOpts as it is. Eg. "c,d" from above.
+				valueOpts = append(valueOpts, s)
+			default:
+				// If a string starts or ends with comma it means that it contains options without comma.
+				// So we split the string at commas to get the options. Eg. "a,b," and ",e" from above.
+				valueOpts = append(valueOpts, strings.Split(strings.Trim(s, ","), ",")...)
+			}
+		}
+	} else {
+		valueOpts = strings.Split(opt, ",")
+	}
+	for _, valOpt := range valueOpts {
+		if valOpt == s {
 			return true
 		}
 	}

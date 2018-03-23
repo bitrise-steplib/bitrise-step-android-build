@@ -12,14 +12,22 @@ import (
 	"github.com/bitrise-io/go-utils/sliceutil"
 	"github.com/bitrise-tools/go-android/gradle"
 	"github.com/bitrise-tools/go-steputils/stepconf"
+	"github.com/bitrise-tools/go-steputils/tools"
+)
+
+const (
+	apkEnvKey          = "BITRISE_APK_PATH"
+	apkListEnvKey      = "BITRISE_APK_PATH_LIST"
+	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
+	mappingFilePattern = "*build/*/mapping.txt"
 )
 
 // Config ...
 type Config struct {
-	ProjectLocation   string `env:"project_location,required"`
-	ReportPathPattern string `env:"report_path_pattern"`
-	Variant           string `env:"variant"`
-	Module            string `env:"module"`
+	ProjectLocation string `env:"project_location,required"`
+	APKPathPattern  string `env:"apk_path_pattern"`
+	Variant         string `env:"variant"`
+	Module          string `env:"module"`
 }
 
 func failf(f string, args ...interface{}) {
@@ -92,16 +100,19 @@ func main() {
 	}
 	fmt.Println()
 
-	log.Infof("Exporting artifacts:")
+	log.Infof("Export APKs:")
 	fmt.Println()
 
-	artifacts, err := gradleProject.FindArtifacts(started, config.ReportPathPattern)
+	apks, err := gradleProject.FindArtifacts(started, config.APKPathPattern, false)
 	if err != nil {
-		failf("failed to find artifacts, error: %v", err)
+		failf("failed to find apks, error: %v", err)
 	}
 
-	if len(artifacts) > 0 {
-		for _, artifact := range artifacts {
+	if len(apks) > 0 {
+		var lastExportedArtifact string
+		var exportedArtifactPaths []string
+
+		for _, artifact := range apks {
 			exists, err := pathutil.IsPathExists(
 				filepath.Join(deployDir, artifact.Name),
 			)
@@ -122,12 +133,92 @@ func main() {
 			log.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, artifact.Name)
 
 			if err := artifact.Export(deployDir); err != nil {
-				log.Warnf("failed to export artifacts, error: %v", err)
+				log.Warnf("failed to export apks, error: %v", err)
+			}
+
+			exportedPath := filepath.Join(deployDir, artifact.Name)
+
+			lastExportedArtifact = exportedPath
+
+			exportedArtifactPaths = append(exportedArtifactPaths, exportedPath)
+		}
+
+		fmt.Println()
+		if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
+			failf("Failed to export environment variable: %s", apkEnvKey)
+		}
+		log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", apkEnvKey, filepath.Base(lastExportedArtifact))
+
+		var pathListStr string
+		for i, pth := range exportedArtifactPaths {
+			// tools.ExportEnvironmentWithEnvman("", "")
+			if len(exportedArtifactPaths) == 1 {
+				pathListStr = "$BITRISE_DEPLOY_DIR/" + filepath.Base(pth)
+			} else {
+				pathListStr += "$BITRISE_DEPLOY_DIR/" + filepath.Base(pth)
+				if i < len(exportedArtifactPaths)-1 {
+					pathListStr += "|\n           "
+				}
 			}
 		}
+		if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
+			failf("Failed to export environment variable: %s", apkEnvKey)
+		}
+		log.Printf("  Env    [ $%s = %s ]", apkListEnvKey, pathListStr)
+
 	} else {
-		log.Warnf("No artifacts found with pattern: %s", config.ReportPathPattern)
-		log.Warnf("If you have changed default APK export path in your gradle files then you might need to change ReportPathPattern accordingly.")
+		log.Warnf("No apks found with pattern: %s", config.APKPathPattern)
+		log.Warnf("If you have changed default APK export path in your gradle files then you might need to change APKPathPattern accordingly.")
+	}
+
+	fmt.Println()
+
+	log.Infof("Export mapping files:")
+	fmt.Println()
+
+	mappings, err := gradleProject.FindArtifacts(started, mappingFilePattern, true)
+	if err != nil {
+		failf("failed to find mapping files, error: %v", err)
+	}
+
+	if len(mappings) > 0 {
+		var lastExportedArtifact string
+
+		for _, artifact := range mappings {
+			exists, err := pathutil.IsPathExists(
+				filepath.Join(deployDir, artifact.Name),
+			)
+			if err != nil {
+				failf("failed to check path, error: %v", err)
+			}
+
+			artifactName := filepath.Base(artifact.Path)
+
+			if exists {
+				timestamp := time.Now().
+					Format("20060102150405")
+				ext := filepath.Ext(artifact.Name)
+				name := strings.TrimSuffix(filepath.Base(artifact.Name), ext)
+				artifact.Name = fmt.Sprintf("%s-%s%s", name, timestamp, ext)
+			}
+
+			log.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, artifact.Name)
+
+			if err := artifact.Export(deployDir); err != nil {
+				log.Warnf("failed to export apks, error: %v", err)
+			}
+
+			lastExportedArtifact = filepath.Join(deployDir, artifact.Name)
+		}
+
+		fmt.Println()
+		if err := tools.ExportEnvironmentWithEnvman(mappingFileEnvKey, lastExportedArtifact); err != nil {
+			failf("Failed to export environment variable: %s", mappingFileEnvKey)
+		}
+		log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
+	} else {
+		log.Printf("No mapping files found with pattern: %s", mappingFilePattern)
+		log.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
 	}
 
 	if taskError != nil {

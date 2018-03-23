@@ -46,10 +46,35 @@ inputs:
       description: |
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       is_required: false
-  - report_path_pattern: "*/build/outputs/apk/*.apk"
+  - apk_path_pattern: "*/build/outputs/apk/*.apk"
     opts:
       category: APK Export Options
       title: APK location pattern
       summary: Will find the APK files with the given pattern.
       description: Will find the APK files with the given pattern.
       is_required: true
+outputs:
+  - BITRISE_APK_PATH:
+    opts:
+      title: "Path of the generated APK"
+      summary: "Path of the generated (and copied) APK - after filtering."
+      description: |-
+        This output will include the path of the generated APK,
+        after filtering based on the filter inputs.
+        If the build generates more than one APK which fulfills the
+        filter inputs this output will contain the last one's path.
+  - BITRISE_APK_PATH_LIST:
+    opts:
+      title: "List of the generated APK paths"
+      summary: "List of the generated (and copied) APK paths - after filtering."
+      description: |-
+        This output will include the paths of the generated APKs,
+        after filtering based on the filter inputs.
+        The paths are separated with `|` character, eg: `app-armeabi-v7a-debug.apk|app-mips-debug.apk|app-x86-debug.apk`
+  - BITRISE_MAPPING_PATH:
+    opts:
+      title: "Path of the generated mapping.txt"
+      summary: "Path of the generated (and copied) mapping.txt."
+      description: |-
+        This output will include the path of the generated mapping.txt.
+        If more than one mapping.txt exist in project this output will contain the last one's path.

@@ -19,6 +19,8 @@ workflows:
     after_run:
     - simple-and-mono-repo-in-src-dir
     - simple-and-mono-repo-in-root-tmp-dir
+    - check-artifacts
+
   simple-and-mono-repo-in-src-dir:
     title: Test simple android project & mono repo projects in source dir
     steps:
@@ -111,6 +113,75 @@ workflows:
         - is_create_path: true
     - path::./:
         title: Test monorepo
+    
+  check-artifacts:
+    steps:
+    - script:
+        title: Check if files are existing
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # without timestamps
+            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned.apk ]; then
+                exit 1
+            fi
+
+            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug-androidTest.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]; then
+                exit 1
+            fi
+
+            # with timestamps
+            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned-20*?.apk ]; then
+                exit 1
+            fi
+
+            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug-androidTest-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug-20*?.apk ]; then
+                exit 1
+            fi
+            if [ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned-20*?.apk ]; then
+                exit 1
+            fi
 
   go-tests:
     steps:

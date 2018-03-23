@@ -25,8 +25,11 @@
 [[projects]]
   branch = "master"
   name = "github.com/bitrise-tools/go-steputils"
-  packages = ["stepconf"]
-  revision = "b0e1079aa921440413a5c56f301246fe8367c072"
+  packages = [
+    "stepconf",
+    "tools"
+  ]
+  revision = "d4d9e08cc4347e8784bb18419fcdceb932e17019"
 
 [[projects]]
   name = "github.com/ryanuber/go-glob"
@@ -37,6 +40,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0bf6ee014103ddba75ac2819e4fbfb2dbaa48e1b9fa05cdd643d11cdd34901e6"
+  inputs-digest = "e22b429a81ff8bb8b5ad960eabcf03624b72ae6e4bb09a614e96461527723b17"
   solver-name = "gps-cdcl"
   solver-version = 1
