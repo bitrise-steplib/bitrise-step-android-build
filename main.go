@@ -94,9 +94,8 @@ func main() {
 	started := time.Now()
 
 	log.Infof("Run build:")
-	taskError := buildTask.Run(filteredVariants)
-	if taskError != nil {
-		log.Errorf("Build task failed, error: %v", err)
+	if err := buildTask.Run(filteredVariants); err != nil {
+		failf("Build task failed, error: %v", err)
 	}
 	fmt.Println()
 
@@ -151,7 +150,6 @@ func main() {
 
 		var pathListStr string
 		for i, pth := range exportedArtifactPaths {
-			// tools.ExportEnvironmentWithEnvman("", "")
 			if len(exportedArtifactPaths) == 1 {
 				pathListStr = "$BITRISE_DEPLOY_DIR/" + filepath.Base(pth)
 			} else {
@@ -219,9 +217,5 @@ func main() {
 	} else {
 		log.Printf("No mapping files found with pattern: %s", mappingFilePattern)
 		log.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
-	}
-
-	if taskError != nil {
-		os.Exit(1)
 	}
 }
