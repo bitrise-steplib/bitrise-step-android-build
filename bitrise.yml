@@ -26,9 +26,7 @@ workflows:
     steps:
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            rm -rf _tmp
+        - content: rm -rf _tmp
     - change-workdir:
         title: cd $BITRISE_SOURCE_DIR/_tmp
         run_if: true
@@ -37,9 +35,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            git clone $SIMPLE_REPO_GIT_CLONE_URL .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
     - path::./:
         title: Test simple android project
     - change-workdir:
@@ -50,9 +46,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            git clone $MONO_REPO_GIT_CLONE_URL .
+        - content: git clone $MONO_REPO_GIT_CLONE_URL .
     - change-workdir:
         title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
         run_if: true
@@ -67,9 +61,7 @@ workflows:
     steps:
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            rm -rf /tmp/_tmp
+        - content: rm -rf /tmp/_tmp
     - change-workdir:
         title: cd /tmp/_tmp
         run_if: true
@@ -78,9 +70,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            git clone $SIMPLE_REPO_GIT_CLONE_URL .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
     - path::./:
         title: Test simple repo
     - change-workdir:
@@ -91,9 +81,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            rm -rf /tmp/_tmp
+        - content: rm -rf /tmp/_tmp
     - change-workdir:
         title: cd /tmp/_tmp
         run_if: true
@@ -102,9 +90,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: |
-            #!/bin/bash
-            git clone $MONO_REPO_GIT_CLONE_URL .
+        - content: git clone $MONO_REPO_GIT_CLONE_URL .
     - change-workdir:
         title: cd /tmp/ui/espresso/IdlingResourceSample
         run_if: true
@@ -120,68 +106,32 @@ workflows:
         title: Check if files are existing
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
 
             # without timestamps
-            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned.apk ]; then
-                exit 1
-            fi
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned.apk ]]
 
-            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug-androidTest.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]; then
-                exit 1
-            fi
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]]
 
             # with timestamps
-            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned-20*?.apk ]; then
-                exit 1
-            fi
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned-20*.apk) ]]
 
-            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-debug-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug-androidTest-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/app-debug-20*?.apk ]; then
-                exit 1
-            fi
-            if [ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned-20*?.apk ]; then
-                exit 1
-            fi
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-debug-androidTest-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-debug-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-release-unsigned-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-debug-androidTest-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-debug-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-release-unsigned-20*.apk) ]]
 
   go-tests:
     steps:
@@ -189,7 +139,7 @@ workflows:
         title: Export go files to test
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
 
             no_vendor_paths="$(go list ./... | grep -v vendor)"
@@ -198,7 +148,7 @@ workflows:
         title: Err check
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
             go get -u -v github.com/kisielk/errcheck
             go get -u -v github.com/stretchr/testify/require
@@ -207,7 +157,7 @@ workflows:
         title: Go lint
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
             go get -u -v github.com/golang/lint/golint
             while read -r line; do
@@ -223,7 +173,7 @@ workflows:
         title: Go test
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
             go test ./...
 
@@ -234,7 +184,7 @@ workflows:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
             stepman audit --step-yml ./step.yml
 
@@ -246,7 +196,7 @@ workflows:
         title:
         inputs:
         - content: |
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -e
             export CI=true
             releaseman create --version $STEP_VERSION
@@ -285,7 +235,7 @@ workflows:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/usr/bin/env bash
             set -ex
             bitrise share start -c "${MY_STEPLIB_REPO_FORK_GIT_URL}"
             bitrise share create --stepid "${BITRISE_STEP_ID}" --tag "${BITRISE_STEP_VERSION}" --git "${BITRISE_STEP_GIT_CLONE_URL}"

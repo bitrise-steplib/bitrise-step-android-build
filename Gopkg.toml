@@ -1,10 +1,10 @@
 [[constraint]]
-  branch = "master"
   name = "github.com/bitrise-io/go-utils"
+  branch = "master"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/bitrise-tools/go-steputils"
+  branch = "master"
 
 [prune]
   go-tests = true
