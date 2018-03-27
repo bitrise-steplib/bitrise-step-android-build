@@ -133,12 +133,11 @@ func main() {
 		log.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, apk.Name)
 
 		if err := apk.Export(deployDir); err != nil {
-			log.Warnf("failed to export apks, error: %v", err)
+			log.Warnf("failed to export apk (%s), error: %v", apk.Path, err)
+			continue
 		}
 
-		exportedPath := filepath.Join(deployDir, apk.Name)
-
-		exportedArtifactPaths = append(exportedArtifactPaths, exportedPath)
+		exportedArtifactPaths = append(exportedArtifactPaths, filepath.Join(deployDir, apk.Name))
 	}
 
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
@@ -152,7 +151,7 @@ func main() {
 	var paths, sep string
 	for _, path := range exportedArtifactPaths {
 		paths += sep + "$BITRISE_DEPLOY_DIR/" + filepath.Base(path)
-		sep = "| \\\n           "
+		sep = "| \\\n" + strings.Repeat(" ", 11)
 	}
 
 	if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
@@ -194,7 +193,8 @@ func main() {
 		log.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, mapping.Name)
 
 		if err := mapping.Export(deployDir); err != nil {
-			log.Warnf("failed to export apks, error: %v", err)
+			log.Warnf("failed to export mapping.txt (%s), error: %v", mapping.Path, err)
+			continue
 		}
 
 		lastExportedArtifact = filepath.Join(deployDir, mapping.Name)
