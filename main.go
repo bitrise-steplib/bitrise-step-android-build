@@ -35,10 +35,6 @@ func failf(f string, args ...interface{}) {
 }
 
 func main() {
-
-	fmt.Println("okes")
-	os.Exit(0)
-
 	var config cfg
 
 	if err := stepconf.Parse(&config); err != nil {
