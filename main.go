@@ -22,11 +22,12 @@ const (
 	mappingFilePattern = "*build/*/mapping.txt"
 )
 
-type cfg struct {
-	projectLocation string `env:"project_location,required"`
-	apkPathPattern  string `env:"apk_path_pattern"`
-	variant         string `env:"variant"`
-	module          string `env:"module"`
+// Configs ...
+type Configs struct {
+	ProjectLocation string `env:"project_location,required"`
+	APKPathPattern  string `env:"apk_path_pattern"`
+	Variant         string `env:"variant"`
+	Module          string `env:"module"`
 }
 
 func failf(f string, args ...interface{}) {
@@ -35,7 +36,7 @@ func failf(f string, args ...interface{}) {
 }
 
 func main() {
-	var config cfg
+	var config Configs
 
 	if err := stepconf.Parse(&config); err != nil {
 		failf("Couldn't create step config: %v\n", err)
@@ -48,13 +49,13 @@ func main() {
 	log.Printf("- Deploy dir: %s", deployDir)
 	fmt.Println()
 
-	gradleProject, err := gradle.NewProject(config.projectLocation)
+	gradleProject, err := gradle.NewProject(config.ProjectLocation)
 	if err != nil {
 		failf("Failed to open project, error: %s", err)
 	}
 
 	buildTask := gradleProject.
-		GetModule(config.module).
+		GetModule(config.Module).
 		GetTask("assemble")
 
 	log.Infof("Variants:")
@@ -65,7 +66,7 @@ func main() {
 		failf("Failed to fetch variants, error: %s", err)
 	}
 
-	filteredVariants := variants.Filter(config.variant)
+	filteredVariants := variants.Filter(config.Variant)
 
 	for _, variant := range variants {
 		if sliceutil.IsStringInSlice(variant, filteredVariants) {
@@ -78,14 +79,14 @@ func main() {
 	fmt.Println()
 
 	if len(filteredVariants) == 0 {
-		errMsg := fmt.Sprintf("No variant matching for: (%s)", config.variant)
-		if config.module != "" {
-			errMsg += fmt.Sprintf(" in module: [%s]", config.module)
+		errMsg := fmt.Sprintf("No variant matching for: (%s)", config.Variant)
+		if config.Module != "" {
+			errMsg += fmt.Sprintf(" in module: [%s]", config.Module)
 		}
 		failf(errMsg)
 	}
 
-	if config.variant == "" {
+	if config.Variant == "" {
 		log.Warnf("No variant specified, build will run on all variants")
 		fmt.Println()
 	}
@@ -101,13 +102,13 @@ func main() {
 	log.Infof("Export APKs:")
 	fmt.Println()
 
-	apks, err := gradleProject.FindArtifacts(started, config.apkPathPattern, false)
+	apks, err := gradleProject.FindArtifacts(started, config.APKPathPattern, false)
 	if err != nil {
 		failf("failed to find apks, error: %v", err)
 	}
 
 	if len(apks) == 0 {
-		log.Warnf("No apks found with pattern: %s", config.apkPathPattern)
+		log.Warnf("No apks found with pattern: %s", config.APKPathPattern)
 		log.Warnf("If you have changed default APK export path in your gradle files then you might need to change APKPathPattern accordingly.")
 		os.Exit(0)
 	}
