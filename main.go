@@ -140,6 +140,10 @@ func main() {
 		exportedArtifactPaths = append(exportedArtifactPaths, filepath.Join(deployDir, apk.Name))
 	}
 
+	if len(exportedArtifactPaths) == 0 {
+		failf("Could not export any APKs")
+	}
+
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	fmt.Println()
@@ -166,7 +170,7 @@ func main() {
 
 	mappings, err := gradleProject.FindArtifacts(started, mappingFilePattern, true)
 	if err != nil {
-		failf("failed to find mapping files, error: %v", err)
+		failf("Failed to find mapping files, error: %v", err)
 	}
 
 	if len(mappings) == 0 {
