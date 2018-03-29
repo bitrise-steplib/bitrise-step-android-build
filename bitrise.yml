@@ -1,0 +1,242 @@
+format_version: 5
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+app:
+  envs:
+  - BITRISE_STEP_ID: android-build
+  - BITRISE_STEP_VERSION: "0.9.0"
+  - BITRISE_STEP_GIT_CLONE_URL: https://github.com/bitrise-steplib/bitrise-step-android-build.git
+  - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
+  - SIMPLE_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-multiple-test-results-sample.git
+  - MONO_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-testing.git
+
+workflows:
+  test:
+    title: Test simple android project & mono repo projects
+    before_run:
+    - audit-this-step
+    - go-tests
+    after_run:
+    - simple-and-mono-repo-in-src-dir
+    - simple-and-mono-repo-in-root-tmp-dir
+    - check-artifacts
+
+  simple-and-mono-repo-in-src-dir:
+    title: Test simple android project & mono repo projects in source dir
+    steps:
+    - script:
+        inputs:
+        - content: rm -rf _tmp
+    - change-workdir:
+        title: cd $BITRISE_SOURCE_DIR/_tmp
+        run_if: true
+        inputs:
+        - path: ./_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
+    - path::./:
+        title: Test simple android project
+    - change-workdir:
+        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo
+        run_if: true
+        inputs:
+        - path: ./mono_repo
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone $MONO_REPO_GIT_CLONE_URL .
+    - change-workdir:
+        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
+        run_if: true
+        inputs:
+        - path: ./ui/espresso/IdlingResourceSample
+        - is_create_path: true
+    - path::./:
+        title: Test monorepo
+
+  simple-and-mono-repo-in-root-tmp-dir:
+    title: Test simple android project & mono repo projects in /tmp dir
+    steps:
+    - script:
+        inputs:
+        - content: rm -rf /tmp/_tmp
+    - change-workdir:
+        title: cd /tmp/_tmp
+        run_if: true
+        inputs:
+        - path: /tmp/_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
+    - path::./:
+        title: Test simple repo
+    - change-workdir:
+        title: cd /tmp
+        run_if: true
+        inputs:
+        - path: /tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: rm -rf /tmp/_tmp
+    - change-workdir:
+        title: cd /tmp/_tmp
+        run_if: true
+        inputs:
+        - path: /tmp/_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone $MONO_REPO_GIT_CLONE_URL .
+    - change-workdir:
+        title: cd /tmp/ui/espresso/IdlingResourceSample
+        run_if: true
+        inputs:
+        - path: ./ui/espresso/IdlingResourceSample
+        - is_create_path: true
+    - path::./:
+        title: Test monorepo
+    
+  check-artifacts:
+    steps:
+    - script:
+        title: Check if files are existing
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            # without timestamps
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned.apk ]]
+
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]]
+
+            # with timestamps
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned-20*.apk) ]]
+
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-debug-androidTest-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-debug-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-release-unsigned-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-debug-androidTest-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-debug-20*.apk) ]]
+            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-release-unsigned-20*.apk) ]]
+
+  go-tests:
+    steps:
+    - script:
+        title: Export go files to test
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            no_vendor_paths="$(go list ./... | grep -v vendor)"
+            envman add --key GOLIST_WITHOUT_VENDOR --value "$no_vendor_paths"
+    - script:
+        title: Err check
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            go get -u -v github.com/kisielk/errcheck
+            go get -u -v github.com/stretchr/testify/require
+            errcheck -asserts=true -blank=true $GOLIST_WITHOUT_VENDOR
+    - script:
+        title: Go lint
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            go get -u -v github.com/golang/lint/golint
+            while read -r line; do
+              echo "-> Linting: $line"
+              golint_out="$(golint $line)"
+              if [[ "${golint_out}" != "" ]] ; then
+                echo "=> Golint issues found:"
+                echo "${golint_out}"
+                exit 1
+              fi
+            done <<< "$GOLIST_WITHOUT_VENDOR"
+    - script:
+        title: Go test
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            go test ./...
+
+  # ----------------------------------------------------------------
+  # --- workflows to Share this step into a Step Library
+  audit-this-step:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            stepman audit --step-yml ./step.yml
+
+  # ----------------------------------------------------------------
+  # --- workflows to create Release
+  create-release:
+    steps:
+    - script:
+        title:
+        inputs:
+        - content: |
+            #!/usr/bin/env bash
+            set -e
+            export CI=true
+            releaseman create --version $STEP_VERSION
+            
+  share-this-step:
+    envs:
+      # if you want to share this step into a StepLib
+      - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
+      - BITRISE_STEP_ID: $BITRISE_STEP_ID
+      - BITRISE_STEP_VERSION: $BITRISE_STEP_VERSION
+      - BITRISE_STEP_GIT_CLONE_URL: $BITRISE_STEP_GIT_CLONE_URL
+    description: |-
+      If this is the first time you try to share a Step you should
+      first call: $ bitrise share
+
+      This will print you a guide, and information about how Step sharing
+      works. Please read it at least once!
+
+      As noted in the Step sharing guide you'll have to fork the
+      StepLib you want to share this step into. Once you're done with forking
+      the repository you should set your own fork's git clone URL
+      in the `.bitrise.secrets.yml` file, or here in the `envs` section,
+      as the value of the `MY_STEPLIB_REPO_FORK_GIT_URL` environment.
+
+      You're now ready to share this Step, just make sure that
+      the `BITRISE_STEP_ID` and `BITRISE_STEP_VERSION`
+      environments are set to the desired values!
+
+      To share this Step into a StepLib you can just run: $ bitrise run share-this-step
+
+      Once it finishes the only thing left is to actually create a Pull Request,
+      the way described in the guide printed at the end of the process.
+    before_run:
+    - audit-this-step
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            bitrise share start -c "${MY_STEPLIB_REPO_FORK_GIT_URL}"
+            bitrise share create --stepid "${BITRISE_STEP_ID}" --tag "${BITRISE_STEP_VERSION}" --git "${BITRISE_STEP_GIT_CLONE_URL}"
+            bitrise share finish
