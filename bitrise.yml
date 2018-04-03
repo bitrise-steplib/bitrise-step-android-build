@@ -199,7 +199,7 @@ workflows:
             #!/usr/bin/env bash
             set -e
             export CI=true
-            releaseman create --version $STEP_VERSION
+            releaseman create --version $BITRISE_STEP_VERSION
             
   share-this-step:
     envs:
