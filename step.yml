@@ -13,7 +13,7 @@ project_type_tags:
   - react-native
 
 type_tags:
-  - test
+  - build
 
 is_requires_admin_user: true
 is_always_run: false
