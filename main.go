@@ -47,13 +47,12 @@ func getArtifacts(gradleProject gradle.Project, started time.Time, pattern strin
 			return getArtifacts(gradleProject, time.Time{}, pattern, includeModule)
 		}
 		log.Warnf("No artifacts found with pattern: %s without modtime check", pattern)
-		log.Warnf("If you have changed default report export path in your gradle files then you might need to change ReportPathPattern accordingly.")
 	}
 	return
 }
 
 func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
-	var exportedArtifactPaths []string
+	var paths []string
 	for _, artifact := range artifacts {
 		exists, err := pathutil.IsPathExists(filepath.Join(deployDir, artifact.Name))
 		if err != nil {
@@ -76,9 +75,9 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 			continue
 		}
 
-		exportedArtifactPaths = append(exportedArtifactPaths, filepath.Join(deployDir, artifact.Name))
+		paths = append(paths, filepath.Join(deployDir, artifact.Name))
 	}
-	return exportedArtifactPaths, nil
+	return paths, nil
 }
 
 func failf(f string, args ...interface{}) {
@@ -152,6 +151,13 @@ func main() {
 		failf("Build task failed, error: %v", err)
 	}
 	fmt.Println()
+	log.Infof("Collecting cache:")
+	if warning := cache.Collect(config.ProjectLocation, cache.Level(config.CacheLevel)); warning != nil {
+		log.Warnf("%s", warning)
+	}
+	log.Donef("  Done")
+
+	fmt.Println()
 
 	log.Infof("Export APKs:")
 	fmt.Println()
@@ -195,12 +201,6 @@ func main() {
 	}
 	log.Printf("  Env    [ $%s = %s ]", apkListEnvKey, paths)
 
-	fmt.Println()
-	log.Infof("Collecting cache:")
-	if warning := cache.Collect(config.ProjectLocation, cache.Level(config.CacheLevel)); warning != nil {
-		log.Warnf("%s", warning)
-	}
-	log.Donef("  Done")
 	fmt.Println()
 
 	log.Infof("Export mapping files:")
