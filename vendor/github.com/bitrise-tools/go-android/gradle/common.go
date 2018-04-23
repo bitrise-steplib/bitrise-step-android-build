@@ -17,11 +17,12 @@ var conflicts = map[string][]string{
 
 func getGradleOutput(projPath string, tasks ...string) (string, error) {
 	c := command.New(filepath.Join(projPath, "gradlew"), tasks...)
+	c.SetDir(projPath)
 	return c.RunAndReturnTrimmedCombinedOutput()
 }
 
 func runGradleCommand(projPath string, tasks ...string) error {
-	return command.NewWithStandardOuts(filepath.Join(projPath, "gradlew"), append(tasks, "-i", "-stacktrace")...).
+	return command.NewWithStandardOuts(filepath.Join(projPath, "gradlew"), tasks...).
 		SetDir(projPath).
 		Run()
 }

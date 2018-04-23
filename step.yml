@@ -48,11 +48,31 @@ inputs:
       is_required: false
   - apk_path_pattern: "*/build/outputs/apk/*.apk"
     opts:
-      category: APK Export Options
+      category: Options
       title: APK location pattern
       summary: Will find the APK files with the given pattern.
       description: Will find the APK files with the given pattern.
       is_required: true
+  - cache_level: "only_deps"
+    opts:
+      category: Options
+      title: Set the level of cache
+      description: |-
+        `all` - will cache build-cache and dependencies
+        `only_deps` - will cache dependencies only
+        `none` - won't cache any of the above
+      is_required: true
+      value_options:
+      - "all"
+      - "only_deps"
+      - "none"
+  - arguments:
+    opts:
+      category: Options
+      title: Additional Gradle Arguments 
+      summary: Extra arguments passed to the gradle task
+      description: Extra arguments passed to the gradle task
+      is_required: false
 outputs:
   - BITRISE_APK_PATH:
     opts:

@@ -8,28 +8,43 @@
     "colorstring",
     "command",
     "errorutil",
+    "fileutil",
     "log",
     "parseutil",
     "pathutil",
     "pointers",
-    "sliceutil"
+    "sliceutil",
+    "ziputil"
   ]
   revision = "b33f6bcef9b50045d7e62364b354584afc3ee329"
+
+[[projects]]
+  name = "github.com/bitrise-steplib/bitrise-step-android-unit-test"
+  packages = ["cache"]
+  revision = "3d89f92d6f4cff8aa2a07de986cfdd7935eb69a8"
+  version = "0.9.2"
 
 [[projects]]
   branch = "master"
   name = "github.com/bitrise-tools/go-android"
   packages = ["gradle"]
-  revision = "2d468956763b7a87866dc4d2ea715970a88dda05"
+  revision = "5e32d58739d3376ecd9e74fc1eee44c0f00984e5"
 
 [[projects]]
   branch = "master"
   name = "github.com/bitrise-tools/go-steputils"
   packages = [
+    "cache",
     "stepconf",
     "tools"
   ]
   revision = "d4d9e08cc4347e8784bb18419fcdceb932e17019"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/kballard/go-shellquote"
+  packages = ["."]
+  revision = "cd60e84ee657ff3dc51de0b4f55dd299a3e136f2"
 
 [[projects]]
   name = "github.com/ryanuber/go-glob"
@@ -40,6 +55,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e22b429a81ff8bb8b5ad960eabcf03624b72ae6e4bb09a614e96461527723b17"
+  inputs-digest = "2dcf6f6005e8c3e4ffc192461efb68caea77381a42d72a2d46785c9e8310e8ab"
   solver-name = "gps-cdcl"
   solver-version = 1
