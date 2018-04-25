@@ -60,7 +60,7 @@ inputs:
       description: |-
         `all` - will cache build cache and dependencies
         `only_deps` - will cache dependencies only
-        `none` - will not cache any of the above
+        `none` - will not cache anything
       is_required: true
       value_options:
       - "all"
