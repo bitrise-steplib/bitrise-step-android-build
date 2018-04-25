@@ -32,6 +32,7 @@ type Configs struct {
 	Module          string `env:"module"`
 	Arguments       string `env:"arguments"`
 	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
+	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
 }
 
 func getArtifacts(gradleProject gradle.Project, started time.Time, pattern string, includeModule bool) (artifacts []gradle.Artifact, err error) {
@@ -80,28 +81,10 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 	return paths, nil
 }
 
-func failf(f string, args ...interface{}) {
-	log.Errorf(f, args...)
-	os.Exit(1)
-}
-
-func main() {
-	var config Configs
-
-	if err := stepconf.Parse(&config); err != nil {
-		failf("Couldn't create step config: %v\n", err)
-	}
-
-	stepconf.Print(config)
-
-	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
-
-	log.Printf("- Deploy dir: %s", deployDir)
-	fmt.Println()
-
+func mainE(config Configs) error {
 	gradleProject, err := gradle.NewProject(config.ProjectLocation)
 	if err != nil {
-		failf("Failed to open project, error: %s", err)
+		return fmt.Errorf("Failed to open project, error: %s", err)
 	}
 
 	buildTask := gradleProject.
@@ -112,7 +95,7 @@ func main() {
 
 	variants, err := buildTask.GetVariants()
 	if err != nil {
-		failf("Failed to fetch variants, error: %s", err)
+		return fmt.Errorf("Failed to fetch variants, error: %s", err)
 	}
 
 	filteredVariants := variants.Filter(config.Module, config.Variant)
@@ -132,30 +115,24 @@ func main() {
 	if len(filteredVariants) == 0 {
 		if config.Variant != "" {
 			if config.Module == "" {
-				failf("Variant (%s) not found in any module", config.Variant)
+				return fmt.Errorf("Variant (%s) not found in any module", config.Variant)
 			}
-			failf("No variant matching for (%s) in module: [%s]", config.Variant, config.Module)
+			return fmt.Errorf("No variant matching for (%s) in module: [%s]", config.Variant, config.Module)
 		}
-		failf("Module not found: %s", config.Module)
+		return fmt.Errorf("Module not found: %s", config.Module)
 	}
 
 	started := time.Now()
 
 	args, err := shellquote.Split(config.Arguments)
 	if err != nil {
-		failf("Failed to parse arguments, error: %s", err)
+		return fmt.Errorf("Failed to parse arguments, error: %s", err)
 	}
 
 	log.Infof("Run build:")
 	if err := buildTask.Run(filteredVariants, args...); err != nil {
-		failf("Build task failed, error: %v", err)
+		return fmt.Errorf("Build task failed, error: %v", err)
 	}
-	fmt.Println()
-	log.Infof("Collecting cache:")
-	if warning := cache.Collect(config.ProjectLocation, cache.Level(config.CacheLevel)); warning != nil {
-		log.Warnf("%s", warning)
-	}
-	log.Donef("  Done")
 
 	fmt.Println()
 
@@ -164,29 +141,29 @@ func main() {
 
 	apks, err := getArtifacts(gradleProject, started, config.APKPathPattern, false)
 	if err != nil {
-		failf("failed to find apks, error: %v", err)
+		return fmt.Errorf("failed to find apks, error: %v", err)
 	}
 
 	if len(apks) == 0 {
 		log.Warnf("No apks found with pattern: %s", config.APKPathPattern)
 		log.Warnf("If you have changed default APK export path in your gradle files then you might need to change APKPathPattern accordingly.")
-		os.Exit(0)
+		return nil
 	}
 
-	exportedArtifactPaths, err := exportArtifacts(apks, deployDir)
+	exportedArtifactPaths, err := exportArtifacts(apks, config.DeployDir)
 	if err != nil {
-		failf("Failed to export artifact: %v", err)
+		return fmt.Errorf("Failed to export artifact: %v", err)
 	}
 
 	if len(exportedArtifactPaths) == 0 {
-		failf("Could not export any APKs")
+		return fmt.Errorf("Could not export any APKs")
 	}
 
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	fmt.Println()
 	if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
-		failf("Failed to export environment variable: %s", apkEnvKey)
+		return fmt.Errorf("Failed to export environment variable: %s", apkEnvKey)
 	}
 	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", apkEnvKey, filepath.Base(lastExportedArtifact))
 
@@ -197,7 +174,7 @@ func main() {
 	}
 
 	if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
-		failf("Failed to export environment variable: %s", apkEnvKey)
+		return fmt.Errorf("Failed to export environment variable: %s", apkEnvKey)
 	}
 	log.Printf("  Env    [ $%s = %s ]", apkListEnvKey, paths)
 
@@ -209,29 +186,62 @@ func main() {
 	mappings, err := getArtifacts(gradleProject, started, mappingFilePattern, true)
 	if err != nil {
 		log.Warnf("Failed to find mapping files, error: %v", err)
-		return
+		return nil
 	}
 
 	if len(mappings) == 0 {
 		log.Printf("No mapping files found with pattern: %s", mappingFilePattern)
 		log.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
-		os.Exit(0)
+		return nil
 	}
 
-	exportedArtifactPaths, err = exportArtifacts(mappings, deployDir)
+	exportedArtifactPaths, err = exportArtifacts(mappings, config.DeployDir)
 	if err != nil {
-		failf("Failed to export artifact: %v", err)
+		return fmt.Errorf("Failed to export artifact: %v", err)
 	}
 
 	if len(exportedArtifactPaths) == 0 {
-		failf("Could not export any mapping.txt")
+		return fmt.Errorf("Could not export any mapping.txt")
 	}
 
 	lastExportedArtifact = exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	fmt.Println()
 	if err := tools.ExportEnvironmentWithEnvman(mappingFileEnvKey, lastExportedArtifact); err != nil {
-		failf("Failed to export environment variable: %s", mappingFileEnvKey)
+		return fmt.Errorf("Failed to export environment variable: %s", mappingFileEnvKey)
 	}
 	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
+	return nil
+}
+
+func failf(s string, args ...interface{}) {
+	log.Errorf(s, args...)
+	os.Exit(1)
+}
+
+func main() {
+	var config Configs
+
+	if err := stepconf.Parse(&config); err != nil {
+		failf("Couldn't create step config: %v", err)
+	}
+
+	stepconf.Print(config)
+
+	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
+
+	log.Printf("- Deploy dir: %s", deployDir)
+	fmt.Println()
+
+	if err := mainE(config); err != nil {
+		failf("%s", err)
+	}
+
+	fmt.Println()
+	log.Infof("Collecting cache:")
+	if warning := cache.Collect(config.ProjectLocation, cache.Level(config.CacheLevel)); warning != nil {
+		log.Warnf("%s", warning)
+	}
+
+	log.Donef("  Done")
 }
