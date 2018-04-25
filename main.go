@@ -228,9 +228,6 @@ func main() {
 
 	stepconf.Print(config)
 
-	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
-
-	log.Printf("- Deploy dir: %s", deployDir)
 	fmt.Println()
 
 	if err := mainE(config); err != nil {
