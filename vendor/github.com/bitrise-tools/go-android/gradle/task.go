@@ -7,13 +7,13 @@ import (
 
 // Task ...
 type Task struct {
-	name   string
-	module Module
+	name    string
+	project Project
 }
 
 // GetVariants ...
 func (task *Task) GetVariants() (Variants, error) {
-	tasksOutput, err := getGradleOutput(task.module.project.location, task.module.name+"tasks")
+	tasksOutput, err := getGradleOutput(task.project.location, "tasks", "--all")
 	if err != nil {
 		return nil, fmt.Errorf("%s, %s", tasksOutput, err)
 	}
@@ -27,7 +27,7 @@ func (task *Task) parseVariants(gradleOutput string) Variants {
 	// lintMyflavorRelease - Runs lint on the MyflavorRelease build.
 	// lintVitalMyflavorRelease - Runs lint on the MyflavorRelease build.
 	// lintMyflavorStaging - Runs lint on the MyflavorStaging build."
-	var tasks []string
+	tasks := Variants{}
 lines:
 	for _, l := range strings.Split(gradleOutput, "\n") {
 		// l: " lintMyflavorokStaging - Runs lint on the MyflavorokStaging build."
@@ -36,8 +36,16 @@ lines:
 		if l == "" {
 			continue
 		}
-		l = strings.Split(l, " ")[0]
 		// l: "lintMyflavorokStaging"
+		l = strings.Split(l, " ")[0]
+		var module string
+
+		split := strings.Split(l, ":")
+		if len(split) > 1 {
+			module = split[0]
+			l = split[1]
+		}
+		// module removed if any
 		if strings.HasPrefix(l, task.name) {
 			// task.name: "lint"
 			// strings.HasPrefix will match lint and lintVital prefix also, we won't need lintVital so it is a conflict
@@ -52,17 +60,32 @@ lines:
 			if l == "" {
 				continue
 			}
-			tasks = append(tasks, l)
+
+			tasks[module] = append(tasks[module], l)
 		}
 	}
-	return cleanStringSlice(tasks)
+
+	for module, variants := range tasks {
+		tasks[module] = cleanStringSlice(variants)
+	}
+
+	return tasks
+}
+
+func cleanModuleName(s string) string {
+	if s == "" {
+		return s
+	}
+	return ":" + s + ":"
 }
 
 // Run ...
-func (task *Task) Run(variants Variants) error {
-	var args []string
-	for _, variant := range variants {
-		args = append(args, task.module.name+task.name+variant)
+func (task *Task) Run(v Variants, args ...string) error {
+	var a []string
+	for module, variants := range v {
+		for _, variant := range variants {
+			a = append(a, cleanModuleName(module)+task.name+variant)
+		}
 	}
-	return runGradleCommand(task.module.project.location, args...)
+	return runGradleCommand(task.project.location, append(a, args...)...)
 }
