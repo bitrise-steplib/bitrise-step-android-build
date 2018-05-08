@@ -38,6 +38,9 @@ workflows:
         - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
     - path::./:
         title: Test simple android project
+        inputs:
+        - module: another_app
+        - variant: Release
     - change-workdir:
         title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo
         run_if: true
@@ -55,6 +58,9 @@ workflows:
         - is_create_path: true
     - path::./:
         title: Test monorepo
+        inputs:
+        - module: app
+        - variant: Debug
 
   simple-and-mono-repo-in-root-tmp-dir:
     title: Test simple android project & mono repo projects in /tmp dir
@@ -73,6 +79,9 @@ workflows:
         - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
     - path::./:
         title: Test simple repo
+        inputs:
+        - module: app
+        - variant: Debug
     - change-workdir:
         title: cd /tmp
         run_if: true
@@ -99,6 +108,9 @@ workflows:
         - is_create_path: true
     - path::./:
         title: Test monorepo
+        inputs:
+        - module: app
+        - variant: Debug
     
   check-artifacts:
     steps:
@@ -108,30 +120,11 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -ex
-
-            # without timestamps
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned.apk ]]
-
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/app-debug-androidTest.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]]
-
-            # with timestamps
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-androidTest-20*.apk) ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
             [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-release-unsigned-20*.apk) ]]
-
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-debug-androidTest-20*.apk) ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-debug-20*.apk) ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/another_app-release-unsigned-20*.apk) ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-debug-androidTest-20*.apk) ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-debug-20*.apk) ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/app-release-unsigned-20*.apk) ]]
 
   go-tests:
     steps:

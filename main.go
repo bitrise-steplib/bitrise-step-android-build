@@ -28,8 +28,8 @@ const (
 type Configs struct {
 	ProjectLocation string `env:"project_location,dir"`
 	APKPathPattern  string `env:"apk_path_pattern"`
-	Variant         string `env:"variant"`
-	Module          string `env:"module"`
+	Variant         string `env:"variant,required"`
+	Module          string `env:"module,required"`
 	Arguments       string `env:"arguments"`
 	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
@@ -98,13 +98,14 @@ func mainE(config Configs) error {
 		return fmt.Errorf("Failed to fetch variants, error: %s", err)
 	}
 
-	filteredVariants := variants.Filter(config.Module, config.Variant)
+	filteredVariants := gradle.Variants{}
 
 	for module, variants := range variants {
 		log.Printf("%s:", module)
 		for _, variant := range variants {
-			if sliceutil.IsStringInSlice(variant, filteredVariants[module]) {
+			if variant == config.Variant && module == config.Module {
 				log.Donef("✓ %s", variant)
+				filteredVariants[module] = []string{config.Variant}
 				continue
 			}
 			log.Printf("- %s", variant)
@@ -113,13 +114,15 @@ func mainE(config Configs) error {
 	fmt.Println()
 
 	if len(filteredVariants) == 0 {
-		if config.Variant != "" {
-			if config.Module == "" {
-				return fmt.Errorf("Variant (%s) not found in any module", config.Variant)
-			}
-			return fmt.Errorf("No variant matching for (%s) in module: [%s]", config.Variant, config.Module)
+		if _, ok := variants[config.Module]; !ok {
+			return fmt.Errorf("Module not found: %s", config.Module)
 		}
-		return fmt.Errorf("Module not found: %s", config.Module)
+
+		if !sliceutil.IsStringInSlice(config.Variant, variants[config.Module]) {
+			return fmt.Errorf("Variant not found: %s in module: %s", config.Variant, config.Module)
+		}
+
+		return fmt.Errorf("Failed to determine buildable variants for (%s) variant in module: %s", config.Variant, config.Module)
 	}
 
 	started := time.Now()

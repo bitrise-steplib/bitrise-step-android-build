@@ -37,7 +37,7 @@ inputs:
         Set the module that you want to build. To see your available modules please open your project in Android Studio and go in [Project Structure] and see the list on the left.
       description: |
         Set the module that you want to build. To see your available modules please open your project in Android Studio and go in [Project Structure] and see the list on the left.
-      is_required: false
+      is_required: true
   - variant: ""
     opts:
       title: Variant
@@ -45,7 +45,7 @@ inputs:
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       description: |
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
-      is_required: false
+      is_required: true
   - apk_path_pattern: "*/build/outputs/apk/*.apk"
     opts:
       category: Options
