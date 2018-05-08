@@ -28,8 +28,8 @@ const (
 type Configs struct {
 	ProjectLocation string `env:"project_location,dir"`
 	APKPathPattern  string `env:"apk_path_pattern"`
-	Variant         string `env:"variant,required"`
-	Module          string `env:"module,required"`
+	Variant         string `env:"variant"`
+	Module          string `env:"module"`
 	Arguments       string `env:"arguments"`
 	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
@@ -81,6 +81,34 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 	return paths, nil
 }
 
+func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
+	if module != "" {
+		v, ok := variantsMap[module]
+		if !ok {
+			return nil, fmt.Errorf("module not found: %s", module)
+		}
+		variantsMap = gradle.Variants{module: v}
+	}
+
+	if variant == "" {
+		return variantsMap, nil
+	}
+
+	filteredVariants := gradle.Variants{}
+	for m, variants := range variantsMap {
+		for _, v := range variants {
+			if strings.ToLower(v) == strings.ToLower(variant) {
+				filteredVariants[m] = append(filteredVariants[m], v)
+			}
+		}
+	}
+
+	if len(filteredVariants) == 0 {
+		return nil, fmt.Errorf("variant: %s not found in any module", variant)
+	}
+	return filteredVariants, nil
+}
+
 func mainE(config Configs) error {
 	gradleProject, err := gradle.NewProject(config.ProjectLocation)
 	if err != nil {
@@ -98,32 +126,22 @@ func mainE(config Configs) error {
 		return fmt.Errorf("Failed to fetch variants, error: %s", err)
 	}
 
-	filteredVariants := gradle.Variants{}
+	filteredVariants, err := filterVariants(config.Module, config.Variant, variants)
+	if err != nil {
+		return fmt.Errorf("Failed to find buildable variants, error: %s", err)
+	}
 
 	for module, variants := range variants {
 		log.Printf("%s:", module)
 		for _, variant := range variants {
-			if variant == config.Variant && module == config.Module {
+			if sliceutil.IsStringInSlice(variant, filteredVariants[module]) {
 				log.Donef("✓ %s", variant)
-				filteredVariants[module] = []string{config.Variant}
 				continue
 			}
 			log.Printf("- %s", variant)
 		}
 	}
 	fmt.Println()
-
-	if len(filteredVariants) == 0 {
-		if _, ok := variants[config.Module]; !ok {
-			return fmt.Errorf("Module not found: %s", config.Module)
-		}
-
-		if !sliceutil.IsStringInSlice(config.Variant, variants[config.Module]) {
-			return fmt.Errorf("Variant not found: %s in module: %s", config.Variant, config.Module)
-		}
-
-		return fmt.Errorf("Failed to determine buildable variants for (%s) variant in module: %s", config.Variant, config.Module)
-	}
 
 	started := time.Now()
 
