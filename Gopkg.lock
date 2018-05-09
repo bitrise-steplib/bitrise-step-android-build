@@ -16,7 +16,7 @@
     "sliceutil",
     "ziputil"
   ]
-  revision = "b33f6bcef9b50045d7e62364b354584afc3ee329"
+  revision = "2d657206204605ce3b86124c33fea53c3e380d78"
 
 [[projects]]
   name = "github.com/bitrise-steplib/bitrise-step-android-unit-test"
@@ -41,10 +41,22 @@
   revision = "d4d9e08cc4347e8784bb18419fcdceb932e17019"
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/kballard/go-shellquote"
   packages = ["."]
-  revision = "cd60e84ee657ff3dc51de0b4f55dd299a3e136f2"
+  revision = "95032a82bc518f77982ea72343cc1ade730072f0"
+
+[[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/ryanuber/go-glob"
@@ -52,9 +64,18 @@
   revision = "572520ed46dbddaed19ea3d9541bdd0494163693"
   version = "v0.1"
 
+[[projects]]
+  name = "github.com/stretchr/testify"
+  packages = [
+    "assert",
+    "require"
+  ]
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2dcf6f6005e8c3e4ffc192461efb68caea77381a42d72a2d46785c9e8310e8ab"
+  inputs-digest = "6ac387935f8171773d08f051053ac8bfdb97b37d80d5ee99572ac07b157a8669"
   solver-name = "gps-cdcl"
   solver-version = 1
