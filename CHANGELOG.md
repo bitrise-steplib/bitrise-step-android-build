@@ -1,6 +1,10 @@
-## Changelog (Current version: 0.9.2)
+## Changelog (Current version: 0.9.3)
 
 -----------------
+
+### 0.9.3 (2018 May 09)
+* [198f9ef] Prepare for 0.9.3
+* [9ffad9d] changed variant filtering (#3)
 
 ### 0.9.2 (2018 May 02)
 * [ee08df6] Prepare for 0.9.2
@@ -18,4 +22,4 @@
 
 -----------------
 
-Updated: 2018 May 02
+Updated: 2018 May 09
