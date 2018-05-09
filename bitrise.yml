@@ -40,7 +40,6 @@ workflows:
         title: Test simple android project
         inputs:
         - module: another_app
-        - variant: Release
     - change-workdir:
         title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo
         run_if: true
@@ -59,7 +58,6 @@ workflows:
     - path::./:
         title: Test monorepo
         inputs:
-        - module: app
         - variant: Debug
 
   simple-and-mono-repo-in-root-tmp-dir:
@@ -123,6 +121,8 @@ workflows:
             [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
             [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
             [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
 
