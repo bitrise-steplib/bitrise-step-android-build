@@ -82,6 +82,7 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 }
 
 func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
+	// if module set: drop all the other modules
 	if module != "" {
 		v, ok := variantsMap[module]
 		if !ok {
@@ -90,6 +91,7 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 		variantsMap = gradle.Variants{module: v}
 	}
 
+	// if variant not set: use all variants
 	if variant == "" {
 		return variantsMap, nil
 	}
