@@ -75,4 +75,20 @@ func TestFilterVariants(t *testing.T) {
 
 		require.Equal(t, expectedVariants, filtered)
 	}
+
+	t.Log("check no overlapping variants")
+	{
+		variants := gradle.Variants{
+			"module1": []string{"variant1", "variant12"},
+		}
+
+		filtered, err := filterVariants("module1", "variant1", variants)
+		require.NoError(t, err)
+
+		expectedVariants := gradle.Variants{
+			"module1": []string{"variant1"},
+		}
+
+		require.Equal(t, expectedVariants, filtered)
+	}
 }
