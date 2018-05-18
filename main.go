@@ -153,7 +153,13 @@ func mainE(config Configs) error {
 	}
 
 	log.Infof("Run build:")
-	if err := buildTask.Run(filteredVariants, args...); err != nil {
+	buildCommand := buildTask.GetCommand(filteredVariants, args...)
+
+	fmt.Println()
+	log.Donef("$ " + buildCommand.PrintableCommandArgs())
+	fmt.Println()
+
+	if err := buildCommand.Run(); err != nil {
 		return fmt.Errorf("Build task failed, error: %v", err)
 	}
 

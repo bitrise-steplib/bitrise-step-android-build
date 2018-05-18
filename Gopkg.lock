@@ -16,7 +16,7 @@
     "sliceutil",
     "ziputil"
   ]
-  revision = "2d657206204605ce3b86124c33fea53c3e380d78"
+  revision = "d1de0dbcb811588e61362aff67bb700b93c13c17"
 
 [[projects]]
   name = "github.com/bitrise-steplib/bitrise-step-android-unit-test"
@@ -28,7 +28,7 @@
   branch = "master"
   name = "github.com/bitrise-tools/go-android"
   packages = ["gradle"]
-  revision = "5e32d58739d3376ecd9e74fc1eee44c0f00984e5"
+  revision = "d76dcd0cbf2d6643f6b381751a20a153bcbfb55d"
 
 [[projects]]
   branch = "master"
