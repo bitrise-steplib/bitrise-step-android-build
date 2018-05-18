@@ -21,12 +21,6 @@ func getGradleOutput(projPath string, tasks ...string) (string, error) {
 	return c.RunAndReturnTrimmedCombinedOutput()
 }
 
-func runGradleCommand(projPath string, tasks ...string) error {
-	return command.NewWithStandardOuts(filepath.Join(projPath, "gradlew"), tasks...).
-		SetDir(projPath).
-		Run()
-}
-
 func cleanStringSlice(in []string) (out []string) {
 	for _, s := range in {
 		s = strings.TrimSpace(s)
