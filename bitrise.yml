@@ -159,10 +159,6 @@ workflows:
             #!/usr/bin/env bash
             set -ex
 
-            if [ -z "$VAR" ] ; then
-
-            fi
-
             [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
             [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
