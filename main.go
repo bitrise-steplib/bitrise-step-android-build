@@ -202,8 +202,8 @@ func mainE(config Configs) error {
 		sep = "| \\\n" + strings.Repeat(" ", 11)
 	}
 
-	if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("Failed to export environment variable: %s", apkEnvKey)
+	if err := tools.ExportEnvironmentWithEnvman(apkListEnvKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
+		return fmt.Errorf("Failed to export environment variable: %s", apkListEnvKey)
 	}
 	log.Printf("  Env    [ $%s = %s ]", apkListEnvKey, paths)
 
