@@ -12,6 +12,7 @@ import (
 var conflicts = map[string][]string{
 	"lint": []string{
 		"lintVital",
+		"lintFix",
 	},
 }
 
