@@ -36,6 +36,9 @@ workflows:
     - script:
         inputs:
         - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
     - path::./:
         title: Test simple android project
         inputs:
@@ -65,6 +68,9 @@ workflows:
         inputs:
         - path: ./ui/espresso/IdlingResourceSample
         - is_create_path: true
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
     - path::./:
         title: Test monorepo
         inputs:
@@ -95,6 +101,9 @@ workflows:
     - script:
         inputs:
         - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
     - path::./:
         title: Test simple repo
         inputs:
@@ -134,6 +143,9 @@ workflows:
         inputs:
         - path: ./ui/espresso/IdlingResourceSample
         - is_create_path: true
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
     - path::./:
         title: Test monorepo
         inputs:
