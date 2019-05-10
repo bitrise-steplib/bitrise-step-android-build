@@ -46,6 +46,19 @@ inputs:
       description: |
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       is_required: false
+  - app_path_pattern: |- 
+      */build/outputs/apk/*.apk
+      */build/outputs/bundle/*.aab
+    opts:
+      category: Options
+      title: App artifact (.apk, .aab) location pattern
+      summary: Will find the APK or AAB files - `depending on the build type input` - with the given pattern.
+      description: |
+        Will find the APK or AAB files (depending on the `build type` input ) with the given pattern.
+
+        **Note**<br/>
+        The step will export only the selected artifact type - `build type` - even if the filter would accept other artifact types as well.
+      is_required: true
   - cache_level: "only_deps"
     opts:
       category: Options
