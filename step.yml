@@ -46,11 +46,11 @@ inputs:
       description: |
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       is_required: false
-  - apk_path_pattern: "*/build/outputs/apk/*.apk"
+  - apk_path_pattern:
     opts:
-      category: Options
+      category: Deprecated
       title: APK location pattern
-      summary: Will find the APK files with the given pattern.
+      summary: This input is DEPRECATED - use the Aapp location pattern input instead
       description: Will find the APK files with the given pattern.
       is_required: true
   - cache_level: "only_deps"
