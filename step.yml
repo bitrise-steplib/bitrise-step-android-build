@@ -70,8 +70,12 @@ inputs:
     opts:
       category: Deprecated
       title: APK location pattern
-      summary: This input is DEPRECATED - use the Aapp location pattern input instead
-      description: Will find the APK files with the given pattern.
+      summary: This input is **DEPRECATED** - use the App location pattern input instead
+      description: |
+        This input is **DEPRECATED** - use the App location pattern input instead
+
+        
+        Will find the APK files with the given pattern.
 outputs:
   - BITRISE_APK_PATH:
     opts:
