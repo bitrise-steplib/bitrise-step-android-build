@@ -28,6 +28,7 @@ const (
 type Configs struct {
 	ProjectLocation string `env:"project_location,dir"`
 	APKPathPattern  string `env:"apk_path_pattern"`
+	AppPathPattern  string `env:"app_path_pattern"`
 	Variant         string `env:"variant"`
 	Module          string `env:"module"`
 	Arguments       string `env:"arguments"`
@@ -35,19 +36,23 @@ type Configs struct {
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
 }
 
-func getArtifacts(gradleProject gradle.Project, started time.Time, pattern string, includeModule bool) (artifacts []gradle.Artifact, err error) {
-	artifacts, err = gradleProject.FindArtifacts(started, pattern, includeModule)
-	if err != nil {
-		return
+func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
+	for _, pattern := range patterns {
+		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
+		if err != nil {
+			continue
+		}
+		artifacts = append(artifacts, afs...)
 	}
+
 	if len(artifacts) == 0 {
 		if !started.IsZero() {
-			log.Warnf("No artifacts found with pattern: %s that has modification time after: %s", pattern, started)
+			log.Warnf("No artifacts found with patterns: %s that has modification time after: %s", strings.Join(patterns, ", "), started)
 			log.Warnf("Retrying without modtime check....")
 			fmt.Println()
-			return getArtifacts(gradleProject, time.Time{}, pattern, includeModule)
+			return getArtifacts(gradleProject, time.Time{}, patterns, includeModule)
 		}
-		log.Warnf("No artifacts found with pattern: %s without modtime check", pattern)
+		log.Warnf("No artifacts found with pattern: %s without modtime check", strings.Join(patterns, ", "))
 	}
 	return
 }
@@ -165,27 +170,29 @@ func mainE(config Configs) error {
 
 	fmt.Println()
 
-	log.Infof("Export APKs:")
+	log.Infof("Export Artifacts:")
 	fmt.Println()
 
-	apks, err := getArtifacts(gradleProject, started, config.APKPathPattern, false)
+	appPatterns := append(strings.Split(config.AppPathPattern, "\n"), config.APKPathPattern)
+	appPatterns = sliceutil.UniqueStringSlice(appPatterns) // we still need to add the deprecated APKPathPattern which could cause a pattern duplication in the list
+	artifacts, err := getArtifacts(gradleProject, started, appPatterns, false)
 	if err != nil {
 		return fmt.Errorf("failed to find apks, error: %v", err)
 	}
 
-	if len(apks) == 0 {
-		log.Warnf("No apks found with pattern: %s", config.APKPathPattern)
-		log.Warnf("If you have changed default APK export path in your gradle files then you might need to change APKPathPattern accordingly.")
+	if len(artifacts) == 0 {
+		log.Warnf("No artifacts found with patterns: %s", strings.Join(appPatterns, ", "))
+		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change AppPathPattern accordingly.")
 		return nil
 	}
 
-	exportedArtifactPaths, err := exportArtifacts(apks, config.DeployDir)
+	exportedArtifactPaths, err := exportArtifacts(artifacts, config.DeployDir)
 	if err != nil {
 		return fmt.Errorf("Failed to export artifact: %v", err)
 	}
 
 	if len(exportedArtifactPaths) == 0 {
-		return fmt.Errorf("Could not export any APKs")
+		return fmt.Errorf("Could not export any artifacts")
 	}
 
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
@@ -212,7 +219,7 @@ func mainE(config Configs) error {
 	log.Infof("Export mapping files:")
 	fmt.Println()
 
-	mappings, err := getArtifacts(gradleProject, started, mappingFilePattern, true)
+	mappings, err := getArtifacts(gradleProject, started, []string{mappingFilePattern}, true)
 	if err != nil {
 		log.Warnf("Failed to find mapping files, error: %v", err)
 		return nil
