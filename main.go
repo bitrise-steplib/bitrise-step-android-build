@@ -18,8 +18,12 @@ import (
 )
 
 const (
-	apkEnvKey          = "BITRISE_APK_PATH"
-	apkListEnvKey      = "BITRISE_APK_PATH_LIST"
+	apkEnvKey     = "BITRISE_APK_PATH"
+	apkListEnvKey = "BITRISE_APK_PATH_LIST"
+
+	aabEnvKey     = "BITRISE_AAB_PATH"
+	aabListEnvKey = "BITRISE_AAB_PATH_LIST"
+
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
 )
@@ -177,7 +181,7 @@ func mainE(config Configs) error {
 	appPatterns = sliceutil.UniqueStringSlice(appPatterns) // we still need to add the deprecated APKPathPattern which could cause a pattern duplication in the list
 	artifacts, err := getArtifacts(gradleProject, started, appPatterns, false)
 	if err != nil {
-		return fmt.Errorf("failed to find apks, error: %v", err)
+		return fmt.Errorf("failed to find artifacts, error: %v", err)
 	}
 
 	if len(artifacts) == 0 {
@@ -191,6 +195,20 @@ func mainE(config Configs) error {
 		return fmt.Errorf("Failed to export artifact: %v", err)
 	}
 
+	log.Debugf("Found artifacts:\n" + strings.Join(exportedArtifactPaths, "\n"))
+
+	// Remove the wrong build types
+	i := 0
+	for _, path := range exportedArtifactPaths {
+		if filepath.Ext(path) == "."+config.BuildType {
+			exportedArtifactPaths[i] = path
+			i++
+		}
+	}
+	exportedArtifactPaths = exportedArtifactPaths[:i]
+
+	log.Debugf("\nFiltered artifacts:\n" + strings.Join(exportedArtifactPaths, "\n"))
+
 	if len(exportedArtifactPaths) == 0 {
 		return fmt.Errorf("Could not export any artifacts")
 	}
@@ -198,10 +216,13 @@ func mainE(config Configs) error {
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	fmt.Println()
-	if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("Failed to export environment variable: %s", apkEnvKey)
+
+	// Use the correct env key for the selected build type
+	envKey := map[bool]string{true: apkEnvKey, false: aabEnvKey}[config.BuildType == "apk"]
+	if err := tools.ExportEnvironmentWithEnvman(envKey, lastExportedArtifact); err != nil {
+		return fmt.Errorf("Failed to export environment variable: %s", envKey)
 	}
-	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", apkEnvKey, filepath.Base(lastExportedArtifact))
+	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
 
 	var paths, sep string
 	for _, path := range exportedArtifactPaths {
@@ -209,10 +230,12 @@ func mainE(config Configs) error {
 		sep = "| \\\n" + strings.Repeat(" ", 11)
 	}
 
-	if err := tools.ExportEnvironmentWithEnvman(apkListEnvKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
-		return fmt.Errorf("Failed to export environment variable: %s", apkListEnvKey)
+	// Use the correct env key for the selected build type
+	envKey = map[bool]string{true: apkListEnvKey, false: aabListEnvKey}[config.BuildType == "apk"]
+	if err := tools.ExportEnvironmentWithEnvman(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
+		return fmt.Errorf("Failed to export environment variable: %s", envKey)
 	}
-	log.Printf("  Env    [ $%s = %s ]", apkListEnvKey, paths)
+	log.Printf("  Env    [ $%s = %s ]", envKey, paths)
 
 	fmt.Println()
 
