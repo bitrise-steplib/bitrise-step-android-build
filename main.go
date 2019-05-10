@@ -123,8 +123,7 @@ func mainE(config Configs) error {
 		return fmt.Errorf("Failed to open project, error: %s", err)
 	}
 
-	buildTask := gradleProject.
-		GetTask("assemble")
+	buildTask := map[bool]*gradle.Task{true: gradleProject.GetTask("assemble"), false: gradleProject.GetTask("bundle")}[config.BuildType == "apk"]
 
 	log.Infof("Variants:")
 	fmt.Println()
