@@ -31,6 +31,7 @@ type Configs struct {
 	AppPathPattern  string `env:"app_path_pattern"`
 	Variant         string `env:"variant"`
 	Module          string `env:"module"`
+	BuildType       string `env:"build_type,opt[apk,aab]"`
 	Arguments       string `env:"arguments"`
 	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`

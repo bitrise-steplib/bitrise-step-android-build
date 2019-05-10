@@ -46,6 +46,17 @@ inputs:
       description: |
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       is_required: false
+  - build_type: apk
+    opts:
+      title: Build type
+      summary: |
+        Set the build type that you want to build.
+      description: |
+        Set the build type that you want to build.
+      is_required: true
+      value_options:
+      - "apk"
+      - "aab"
   - app_path_pattern: |- 
       */build/outputs/apk/*.apk
       */build/outputs/bundle/*.aab
@@ -54,7 +65,7 @@ inputs:
       title: App artifact (.apk, .aab) location pattern
       summary: Will find the APK or AAB files - `depending on the build type input` - with the given pattern.
       description: |
-        Will find the APK or AAB files (depending on the `build type` input ) with the given pattern.<br/>
+        Will find the APK or AAB files - `depending on the build type input` - with the given pattern.<br/>
         Separate patters with a newline.
 
         **Note**<br/>
