@@ -23,6 +23,7 @@ workflows:
     - _clear-artifacts
     - simple-and-mono-repo-in-src-dir-aab
     - simple-and-mono-repo-in-root-tmp-dir-aab
+    - _check-artifacts-aab
 
   simple-and-mono-repo-in-src-dir:
     title: Test simple android project & mono repo projects in source dir for APK build type
