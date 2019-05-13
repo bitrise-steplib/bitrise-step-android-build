@@ -8,6 +8,8 @@ app:
   - SIMPLE_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-multiple-test-results-sample.git
   - MONO_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-testing.git
 
+  - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
+
 workflows:
   test:
     title: Test simple android project & mono repo projects
@@ -17,10 +19,13 @@ workflows:
     after_run:
     - simple-and-mono-repo-in-src-dir
     - simple-and-mono-repo-in-root-tmp-dir
-    - check-artifacts
+    - _check-artifacts
+    - _clear-artifacts
+    - simple-and-mono-repo-in-src-dir-aab
+    - simple-and-mono-repo-in-root-tmp-dir-aab
 
   simple-and-mono-repo-in-src-dir:
-    title: Test simple android project & mono repo projects in source dir
+    title: Test simple android project & mono repo projects in source dir for APK build type
     steps:
     - script:
         inputs:
@@ -33,7 +38,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
@@ -59,7 +64,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $MONO_REPO_GIT_CLONE_URL .
+        - content: git clone -b maintenance $MONO_REPO_GIT_CLONE_URL .
     - change-workdir:
         title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
         run_if: true
@@ -85,7 +90,7 @@ workflows:
             if [ -z "$BITRISE_MAPPING_PATH" ] ; then echo "BITRISE_MAPPING_PATH env is empty" ; exit 1 ; fi ;
 
   simple-and-mono-repo-in-root-tmp-dir:
-    title: Test simple android project & mono repo projects in /tmp dir
+    title: Test simple android project & mono repo projects in /tmp dir for APK build type
     steps:
     - script:
         inputs:
@@ -134,7 +139,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $MONO_REPO_GIT_CLONE_URL .
+        - content: git clone -b maintenance $MONO_REPO_GIT_CLONE_URL .
     - change-workdir:
         title: cd /tmp/ui/espresso/IdlingResourceSample
         run_if: true
@@ -159,11 +164,175 @@ workflows:
             if [ -z "$BITRISE_APK_PATH" ] ; then echo "BITRISE_APK_PATH env is empty" ; exit 1 ; fi ;
             if [ -z "$BITRISE_APK_PATH_LIST" ] ; then echo "BITRISE_APK_PATH_LIST env is empty" ; exit 1 ; fi ;
             if [ -z "$BITRISE_MAPPING_PATH" ] ; then echo "BITRISE_MAPPING_PATH env is empty" ; exit 1 ; fi ;
-    
-  check-artifacts:
+
+    ##
+    ## AAB
+  simple-and-mono-repo-in-src-dir-aab:
+    title: Test simple android project & mono repo projects in source dir for AAB build type
+    steps:
+    - script:
+        inputs:
+        - content: rm -rf _tmp
+    - change-workdir:
+        title: cd $BITRISE_SOURCE_DIR/_tmp
+        run_if: true
+        inputs:
+        - path: ./_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test simple android project
+        inputs:
+        - module: another_app
+        - variant: Debug
+        - build_type: aab
+    - script:
+        title: Check outputs
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            if [ -z "$BITRISE_AAB_PATH" ] ; then echo "BITRISE_AAB_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_AAB_PATH_LIST" ] ; then echo "BITRISE_AAB_PATH_LIST env is empty" ; exit 1 ; fi ;
+    - change-workdir:
+        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo
+        run_if: true
+        inputs:
+        - path: ./mono_repo
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone -b maintenance $MONO_REPO_GIT_CLONE_URL .
+    - change-workdir:
+        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
+        run_if: true
+        inputs:
+        - path: ./ui/espresso/IdlingResourceSample
+        - is_create_path: true
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test monorepo
+        inputs:
+        - variant: Debug
+        - build_type: aab
+    - script:
+        title: Check outputs
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            if [ -z "$BITRISE_AAB_PATH" ] ; then echo "BITRISE_AAB_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_AAB_PATH_LIST" ] ; then echo "BITRISE_AAB_PATH_LIST env is empty" ; exit 1 ; fi ;
+
+  simple-and-mono-repo-in-root-tmp-dir-aab:
+    title: Test simple android project & mono repo projects in /tmp dir for AAB build type
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            rm -rf "$ORIG_BITRISE_SOURCE_DIR/_tmp"
+            mkdir -p "$ORIG_BITRISE_SOURCE_DIR/tmp/_tmp"
+    - change-workdir:
+        title: cd $ORIG_BITRISE_SOURCE_DIR/tmp/_tmp
+        run_if: true
+        inputs:
+        - path: $ORIG_BITRISE_SOURCE_DIR/tmp/_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test simple repo
+        inputs:
+        - module: app
+        - variant: Debug
+        - build_type: aab
+    - script:
+        title: Check outputs
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            if [ -z "$BITRISE_AAB_PATH" ] ; then echo "BITRISE_AAB_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_AAB_PATH_LIST" ] ; then echo "BITRISE_AAB_PATH_LIST env is empty" ; exit 1 ; fi ;
+    - change-workdir:
+        title: cd /tmp
+        run_if: true
+        inputs:
+        - path: /tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: rm -rf /tmp/_tmp
+    - change-workdir:
+        title: cd /tmp/_tmp
+        run_if: true
+        inputs:
+        - path: /tmp/_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: git clone -b maintenance $MONO_REPO_GIT_CLONE_URL .
+    - change-workdir:
+        title: cd /tmp/ui/espresso/IdlingResourceSample
+        run_if: true
+        inputs:
+        - path: ./ui/espresso/IdlingResourceSample
+        - is_create_path: true
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test monorepo
+        inputs:
+        - module: app
+        - variant: Debug
+        - build_type: aab
+    - script:
+        title: Check outputs
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            if [ -z "$BITRISE_AAB_PATH" ] ; then echo "BITRISE_AAB_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_AAB_PATH_LIST" ] ; then echo "BITRISE_AAB_PATH_LIST env is empty" ; exit 1 ; fi ;
+  
+  _clear-artifacts:
     steps:
     - script:
         title: Check if files are existing
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            rm $BITRISE_DEPLOY_DIR/*
+            
+            envman add --key BITRISE_APK_PATH --value ""
+            envman add --key BITRISE_APK_PATH_LIST --value ""
+            envman add --key BITRISE_MAPPING_PATH --value ""
+
+  _check-artifacts:
+    steps:
+    - script:
+        title: Clear exported files
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -176,6 +345,21 @@ workflows:
             [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
             [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
+
+  _check-artifacts-aab:
+    steps:
+    - script:
+        title: Check if files are existing
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            [[ -f $BITRISE_DEPLOY_DIR/app-debug.aab ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.aab ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.aab ]]
+            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.aab ]]
 
   go-tests:
     steps:
