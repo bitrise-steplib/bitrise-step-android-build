@@ -119,6 +119,23 @@ outputs:
         This output will include the paths of the generated APKs
         after filtering based on the filter inputs.
         The paths are separated with `|` character, for example, `app-armeabi-v7a-debug.apk|app-mips-debug.apk|app-x86-debug.apk`
+  - BITRISE_AAB_PATH:
+    opts:
+      title: "Path of the generated AAB"
+      summary: "Path of the generated (and copied) AAB - after filtering."
+      description: |-
+        This output will include the path of the generated AAB
+        after filtering based on the filter inputs.
+        If the build generates more than one AAB which fulfills the
+        filter inputs, this output will contain the last one's path.
+	- BITRISE_AAB_PATH_LIST:
+    opts:
+      title: "List of the generated AAB paths"
+      summary: "List of the generated (and copied) AAB paths - after filtering."
+      description: |-
+        This output will include the paths of the generated AABs
+        after filtering based on the filter inputs.
+        The paths are separated with `|` character, for example, `app--debug.aab|app-mips-debug.aab`
   - BITRISE_MAPPING_PATH:
     opts:
       title: "Path of the generated mapping.txt"
