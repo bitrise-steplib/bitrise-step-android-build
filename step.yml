@@ -128,7 +128,7 @@ outputs:
         after filtering based on the filter inputs.
         If the build generates more than one AAB which fulfills the
         filter inputs, this output will contain the last one's path.
-	- BITRISE_AAB_PATH_LIST:
+  - BITRISE_AAB_PATH_LIST:
     opts:
       title: "List of the generated AAB paths"
       summary: "List of the generated (and copied) AAB paths - after filtering."
