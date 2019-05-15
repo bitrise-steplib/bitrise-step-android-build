@@ -32,7 +32,7 @@ workflows:
         inputs:
         - content: rm -rf _tmp
     - change-workdir:
-        title: cd $BITRISE_SOURCE_DIR/_tmp
+        title: cd $ORIG_BITRISE_SOURCE_DIR/_tmp
         run_if: true
         inputs:
         - path: ./_tmp
@@ -67,7 +67,7 @@ workflows:
         inputs:
         - content: git clone -b maintenance $MONO_REPO_GIT_CLONE_URL .
     - change-workdir:
-        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
+        title: cd $ORIG_BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
         run_if: true
         inputs:
         - path: ./ui/espresso/IdlingResourceSample
@@ -202,7 +202,7 @@ workflows:
             if [ -z "$BITRISE_AAB_PATH" ] ; then echo "BITRISE_AAB_PATH env is empty" ; exit 1 ; fi ;
             if [ -z "$BITRISE_AAB_PATH_LIST" ] ; then echo "BITRISE_AAB_PATH_LIST env is empty" ; exit 1 ; fi ;
     - change-workdir:
-        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo
+        title: cd $ORIG_BITRISE_SOURCE_DIR/_tmp/mono_repo
         run_if: true
         inputs:
         - path: ./mono_repo
@@ -211,7 +211,7 @@ workflows:
         inputs:
         - content: git clone -b maintenance $MONO_REPO_GIT_CLONE_URL .
     - change-workdir:
-        title: cd $BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
+        title: cd $ORIG_BITRISE_SOURCE_DIR/_tmp/mono_repo/ui/espresso/IdlingResourceSample
         run_if: true
         inputs:
         - path: ./ui/espresso/IdlingResourceSample
@@ -356,11 +356,9 @@ workflows:
             #!/usr/bin/env bash
             set -ex
 
-            [[ -f $BITRISE_DEPLOY_DIR/app-debug.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.aab ]]
+            [[ -f $BITRISE_DEPLOY_DIR/_tmp-another_app.aab ]]
+            [[ -f $BITRISE_DEPLOY_DIR/app.aab ]]
+            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app.aab ]]
 
   go-tests:
     steps:
