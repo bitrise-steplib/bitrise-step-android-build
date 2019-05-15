@@ -39,14 +39,13 @@ type Configs struct {
 	Arguments       string `env:"arguments"`
 	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
-	Verbose         bool   `env:"verbose_log,opt[yes,no]"`
 }
 
 func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
 	for _, pattern := range patterns {
 		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
 		if err != nil {
-			log.Debugf("Failed to find artifact, error: %s", err)
+			log.Warnf("Failed to find artifact, error: %s", err)
 			continue
 		}
 		artifacts = append(artifacts, afs...)
@@ -306,8 +305,6 @@ func main() {
 
 	stepconf.Print(config)
 	fmt.Println()
-
-	log.SetEnableDebugLog(config.Verbose)
 
 	//
 	// app_path_pattern is required, and the apk_path_pattern is deprecated
