@@ -305,6 +305,7 @@ workflows:
         - module: app
         - variant: Debug
         - build_type: aab
+        - apk_path_pattern: "*/build/outputs/apk/*.apk"
     - script:
         title: Check outputs
         inputs:

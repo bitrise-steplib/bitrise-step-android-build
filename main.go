@@ -32,7 +32,7 @@ const (
 type Configs struct {
 	ProjectLocation string `env:"project_location,dir"`
 	APKPathPattern  string `env:"apk_path_pattern"`
-	AppPathPattern  string `env:"app_path_pattern"`
+	AppPathPattern  string `env:"app_path_pattern,required"`
 	Variant         string `env:"variant"`
 	Module          string `env:"module"`
 	BuildType       string `env:"build_type,opt[apk,aab]"`
@@ -121,7 +121,7 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 	return filteredVariants, nil
 }
 
-func mainE(config Configs) error {
+func mainE(config Configs, appPatterns []string) error {
 	gradleProject, err := gradle.NewProject(config.ProjectLocation)
 	if err != nil {
 		return fmt.Errorf("Failed to open project, error: %s", err)
@@ -175,8 +175,6 @@ func mainE(config Configs) error {
 	fmt.Println()
 	log.Infof("Export Artifacts:")
 
-	appPatterns := append(strings.Split(config.AppPathPattern, "\n"), config.APKPathPattern)
-	appPatterns = sliceutil.UniqueStringSlice(appPatterns) // we still need to add the deprecated APKPathPattern which could cause a pattern duplication in the list
 	artifacts, err := getArtifacts(gradleProject, started, appPatterns, false)
 	if err != nil {
 		return fmt.Errorf("failed to find artifacts, error: %v", err)
@@ -291,10 +289,19 @@ func main() {
 	}
 
 	stepconf.Print(config)
-
 	fmt.Println()
 
-	if err := mainE(config); err != nil {
+	//
+	// app_path_pattern is required, and the apk_path_pattern is deprecated
+	if config.APKPathPattern != "" {
+		log.Warnf("apk_path_pattern input is **DEPRECATED** - use the app_path_pattern input instead.")
+	}
+	if config.APKPathPattern != "" && config.AppPathPattern != "" {
+		log.Warnf("Both apk_path_pattern and app_path_pattern inputs are provided. Using the app_path_pattern only.")
+	}
+	appPatterns := append(strings.Split(config.AppPathPattern, "\n"))
+
+	if err := mainE(config, appPatterns); err != nil {
 		failf("%s", err)
 	}
 
