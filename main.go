@@ -173,9 +173,7 @@ func mainE(config Configs) error {
 	}
 
 	fmt.Println()
-
 	log.Infof("Export Artifacts:")
-	fmt.Println()
 
 	appPatterns := append(strings.Split(config.AppPathPattern, "\n"), config.APKPathPattern)
 	appPatterns = sliceutil.UniqueStringSlice(appPatterns) // we still need to add the deprecated APKPathPattern which could cause a pattern duplication in the list
@@ -184,30 +182,37 @@ func mainE(config Configs) error {
 		return fmt.Errorf("failed to find artifacts, error: %v", err)
 	}
 
-	if len(artifacts) == 0 {
+	var artNames []string
+	for _, a := range artifacts {
+		artNames = append(artNames, a.Name)
+	}
+
+	log.Donef("Found artifacts by provided pattern:")
+
+	// Filter artifacts by build type
+	var filteredArtifacts []gradle.Artifact
+	for _, a := range artifacts {
+		if filepath.Ext(a.Path) == "."+config.BuildType {
+			filteredArtifacts = append(filteredArtifacts, a)
+			fmt.Print(a.Name + ": ")
+			log.Donef("is " + config.BuildType + " => Export")
+		} else {
+			fmt.Print(a.Name + ": ")
+			log.Errorf("is not " + config.BuildType + " => SKIP Export")
+		}
+	}
+	fmt.Println()
+
+	if len(filteredArtifacts) == 0 {
 		log.Warnf("No artifacts found with patterns: %s", strings.Join(appPatterns, ", "))
 		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change AppPathPattern accordingly.")
 		return nil
 	}
 
-	exportedArtifactPaths, err := exportArtifacts(artifacts, config.DeployDir)
+	exportedArtifactPaths, err := exportArtifacts(filteredArtifacts, config.DeployDir)
 	if err != nil {
 		return fmt.Errorf("Failed to export artifact: %v", err)
 	}
-
-	log.Debugf("Found artifacts:\n" + strings.Join(exportedArtifactPaths, "\n"))
-
-	// Remove the wrong build types
-	i := 0
-	for _, path := range exportedArtifactPaths {
-		if filepath.Ext(path) == "."+config.BuildType {
-			exportedArtifactPaths[i] = path
-			i++
-		}
-	}
-	exportedArtifactPaths = exportedArtifactPaths[:i]
-
-	log.Debugf("\nFiltered artifacts:\n" + strings.Join(exportedArtifactPaths, "\n"))
 
 	if len(exportedArtifactPaths) == 0 {
 		return fmt.Errorf("Could not export any artifacts")
