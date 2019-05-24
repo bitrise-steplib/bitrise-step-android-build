@@ -307,14 +307,27 @@ func main() {
 	fmt.Println()
 
 	//
-	// app_path_pattern is required, and the apk_path_pattern is deprecated
-	if config.APKPathPattern != "" {
-		log.Warnf("apk_path_pattern input is **DEPRECATED** - use the app_path_pattern input instead.")
+	// Config migration from apk_path_pattern to app_path_pattern
+	// The apk_path_pattern is deprecated
+	// New input: app_path_pattern
+	// If the apk_path_pattern is used log a warning, and still use the deprecated apk_path_pattern and ignore the new app_path_pattern temporarily
+	var appPatterns []string
+	if strings.TrimSpace(config.APKPathPattern) != "" {
+		log.Warnf(`Step input 'APK location pattern' (apk_path_pattern) is deprectad and will be removed soon,
+use 'App artifact (.apk, .aab) location pattern' (app_path_pattern) instead.`)
+		fmt.Println()
+		log.Infof(`'APK location pattern' (apk_path_pattern) is used, 'App artifact (.apk, .aab) location pattern' (app_path_pattern) is ignored.
+Use 'App artifact (.apk, .aab) location pattern' and set 'APK location pattern' to empty value.`)
+		fmt.Println()
+
+		appPatterns = append(strings.Split(config.APKPathPattern, "\n"))
+	} else {
+		appPatterns = append(strings.Split(config.AppPathPattern, "\n"))
 	}
-	if config.APKPathPattern != "" && config.AppPathPattern != "" {
-		log.Warnf("Both apk_path_pattern and app_path_pattern inputs are provided. Using the app_path_pattern only.")
-	}
-	appPatterns := append(strings.Split(config.AppPathPattern, "\n"))
+
+	// if config.APKPathPattern != "" && config.AppPathPattern != "" {
+	// 	log.Warnf("Both apk_path_pattern and app_path_pattern inputs are provided. Using the app_path_pattern only.")
+	// }
 
 	if err := mainE(config, appPatterns); err != nil {
 		failf("%s", err)
