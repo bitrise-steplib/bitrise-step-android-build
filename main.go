@@ -45,7 +45,7 @@ func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []st
 	for _, pattern := range patterns {
 		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
 		if err != nil {
-			log.Warnf("Failed to find artifact, error: %s", err)
+			log.Warnf("Failed to find artifact with pattern ( %s ), error: %s", pattern, err)
 			continue
 		}
 		artifacts = append(artifacts, afs...)
