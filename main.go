@@ -325,10 +325,6 @@ Use 'App artifact (.apk, .aab) location pattern' and set 'APK location pattern' 
 		appPatterns = append(strings.Split(config.AppPathPattern, "\n"))
 	}
 
-	// if config.APKPathPattern != "" && config.AppPathPattern != "" {
-	// 	log.Warnf("Both apk_path_pattern and app_path_pattern inputs are provided. Using the app_path_pattern only.")
-	// }
-
 	if err := mainE(config, appPatterns); err != nil {
 		failf("%s", err)
 	}
