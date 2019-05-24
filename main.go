@@ -191,7 +191,7 @@ func mainE(config Configs, appPatterns []string) error {
 		artPaths = append(artPaths, a.Name)
 	}
 
-	log.Donef("Used patterns for generated ")
+	log.Donef("Used patterns for generated artifact search")
 	log.Printf(strings.Join(appPatterns, "\n"))
 	fmt.Println()
 	log.Donef("Found artifacts")
@@ -313,7 +313,7 @@ func main() {
 	// If the apk_path_pattern is used log a warning, and still use the deprecated apk_path_pattern and ignore the new app_path_pattern temporarily
 	var appPatterns []string
 	if strings.TrimSpace(config.APKPathPattern) != "" {
-		log.Warnf(`Step input 'APK location pattern' (apk_path_pattern) is deprectad and will be removed soon,
+		log.Warnf(`Step input 'APK location pattern' (apk_path_pattern) is deprectad and will be removed on 20 August 2019,
 use 'App artifact (.apk, .aab) location pattern' (app_path_pattern) instead.`)
 		fmt.Println()
 		log.Infof(`'APK location pattern' (apk_path_pattern) is used, 'App artifact (.apk, .aab) location pattern' (app_path_pattern) is ignored.
