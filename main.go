@@ -186,26 +186,26 @@ func mainE(config Configs, appPatterns []string) error {
 		return fmt.Errorf("failed to find artifacts, error: %v", err)
 	}
 
-	var artNames []string
+	var artPaths []string
 	for _, a := range artifacts {
-		artNames = append(artNames, a.Name)
+		artPaths = append(artPaths, a.Name)
 	}
 
-	log.Donef("Found artifacts by provided pattern:")
+	log.Donef("Used patterns for generated artifact search:")
+	log.Printf(strings.Join(appPatterns, "\n"))
+	fmt.Println()
+	log.Donef("Found artifacts:")
+	log.Printf(strings.Join(artPaths, "\n"))
+	fmt.Println()
 
+	log.Donef("Exporting artifacts with the selected (" + config.BuildType + ") build type")
 	// Filter artifacts by build type
 	var filteredArtifacts []gradle.Artifact
 	for _, a := range artifacts {
 		if filepath.Ext(a.Path) == "."+config.BuildType {
 			filteredArtifacts = append(filteredArtifacts, a)
-			fmt.Print(a.Name + ": ")
-			log.Donef("is " + config.BuildType + " => Export")
-		} else {
-			fmt.Print(a.Name + ": ")
-			log.Errorf("is not " + config.BuildType + " => SKIP Export")
 		}
 	}
-	fmt.Println()
 
 	if len(filteredArtifacts) == 0 {
 		log.Warnf("No artifacts found with patterns: %s", strings.Join(appPatterns, ", "))
