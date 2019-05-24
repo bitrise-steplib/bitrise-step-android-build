@@ -18,8 +18,12 @@ import (
 )
 
 const (
-	apkEnvKey          = "BITRISE_APK_PATH"
-	apkListEnvKey      = "BITRISE_APK_PATH_LIST"
+	apkEnvKey     = "BITRISE_APK_PATH"
+	apkListEnvKey = "BITRISE_APK_PATH_LIST"
+
+	aabEnvKey     = "BITRISE_AAB_PATH"
+	aabListEnvKey = "BITRISE_AAB_PATH_LIST"
+
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
 )
@@ -28,26 +32,33 @@ const (
 type Configs struct {
 	ProjectLocation string `env:"project_location,dir"`
 	APKPathPattern  string `env:"apk_path_pattern"`
+	AppPathPattern  string `env:"app_path_pattern,required"`
 	Variant         string `env:"variant"`
 	Module          string `env:"module"`
+	BuildType       string `env:"build_type,opt[apk,aab]"`
 	Arguments       string `env:"arguments"`
 	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
 }
 
-func getArtifacts(gradleProject gradle.Project, started time.Time, pattern string, includeModule bool) (artifacts []gradle.Artifact, err error) {
-	artifacts, err = gradleProject.FindArtifacts(started, pattern, includeModule)
-	if err != nil {
-		return
+func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
+	for _, pattern := range patterns {
+		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
+		if err != nil {
+			log.Warnf("Failed to find artifact with pattern ( %s ), error: %s", pattern, err)
+			continue
+		}
+		artifacts = append(artifacts, afs...)
 	}
+
 	if len(artifacts) == 0 {
 		if !started.IsZero() {
-			log.Warnf("No artifacts found with pattern: %s that has modification time after: %s", pattern, started)
+			log.Warnf("No artifacts found with patterns: %s that has modification time after: %s", strings.Join(patterns, ", "), started)
 			log.Warnf("Retrying without modtime check....")
 			fmt.Println()
-			return getArtifacts(gradleProject, time.Time{}, pattern, includeModule)
+			return getArtifacts(gradleProject, time.Time{}, patterns, includeModule)
 		}
-		log.Warnf("No artifacts found with pattern: %s without modtime check", pattern)
+		log.Warnf("No artifacts found with pattern: %s without modtime check", strings.Join(patterns, ", "))
 	}
 	return
 }
@@ -111,14 +122,18 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 	return filteredVariants, nil
 }
 
-func mainE(config Configs) error {
+func mainE(config Configs, appPatterns []string) error {
 	gradleProject, err := gradle.NewProject(config.ProjectLocation)
 	if err != nil {
 		return fmt.Errorf("Failed to open project, error: %s", err)
 	}
 
-	buildTask := gradleProject.
-		GetTask("assemble")
+	var buildTask *gradle.Task
+	if config.BuildType == "apk" {
+		buildTask = gradleProject.GetTask("assemble")
+	} else {
+		buildTask = gradleProject.GetTask("bundle")
+	}
 
 	log.Infof("Variants:")
 	fmt.Println()
@@ -164,37 +179,64 @@ func mainE(config Configs) error {
 	}
 
 	fmt.Println()
+	log.Infof("Export Artifacts:")
 
-	log.Infof("Export APKs:")
-	fmt.Println()
-
-	apks, err := getArtifacts(gradleProject, started, config.APKPathPattern, false)
+	artifacts, err := getArtifacts(gradleProject, started, appPatterns, false)
 	if err != nil {
-		return fmt.Errorf("failed to find apks, error: %v", err)
+		return fmt.Errorf("failed to find artifacts, error: %v", err)
 	}
 
-	if len(apks) == 0 {
-		log.Warnf("No apks found with pattern: %s", config.APKPathPattern)
-		log.Warnf("If you have changed default APK export path in your gradle files then you might need to change APKPathPattern accordingly.")
+	var artPaths []string
+	for _, a := range artifacts {
+		artPaths = append(artPaths, a.Name)
+	}
+
+	log.Donef("Used patterns for generated artifact search")
+	log.Printf(strings.Join(appPatterns, "\n"))
+	fmt.Println()
+	log.Donef("Found artifacts")
+	log.Printf(strings.Join(artPaths, "\n"))
+	fmt.Println()
+
+	log.Donef("Exporting artifacts with the selected (" + config.BuildType + ") build type")
+	// Filter artifacts by build type
+	var filteredArtifacts []gradle.Artifact
+	for _, a := range artifacts {
+		if filepath.Ext(a.Path) == "."+config.BuildType {
+			filteredArtifacts = append(filteredArtifacts, a)
+		}
+	}
+
+	if len(filteredArtifacts) == 0 {
+		log.Warnf("No artifacts found with patterns: %s", strings.Join(appPatterns, ", "))
+		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change AppPathPattern accordingly.")
 		return nil
 	}
 
-	exportedArtifactPaths, err := exportArtifacts(apks, config.DeployDir)
+	exportedArtifactPaths, err := exportArtifacts(filteredArtifacts, config.DeployDir)
 	if err != nil {
 		return fmt.Errorf("Failed to export artifact: %v", err)
 	}
 
 	if len(exportedArtifactPaths) == 0 {
-		return fmt.Errorf("Could not export any APKs")
+		return fmt.Errorf("Could not export any artifacts")
 	}
 
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	fmt.Println()
-	if err := tools.ExportEnvironmentWithEnvman(apkEnvKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("Failed to export environment variable: %s", apkEnvKey)
+
+	// Use the correct env key for the selected build type
+	var envKey string
+	if config.BuildType == "apk" {
+		envKey = apkEnvKey
+	} else {
+		envKey = aabEnvKey
 	}
-	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", apkEnvKey, filepath.Base(lastExportedArtifact))
+	if err := tools.ExportEnvironmentWithEnvman(envKey, lastExportedArtifact); err != nil {
+		return fmt.Errorf("Failed to export environment variable: %s", envKey)
+	}
+	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
 
 	var paths, sep string
 	for _, path := range exportedArtifactPaths {
@@ -202,17 +244,23 @@ func mainE(config Configs) error {
 		sep = "| \\\n" + strings.Repeat(" ", 11)
 	}
 
-	if err := tools.ExportEnvironmentWithEnvman(apkListEnvKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
-		return fmt.Errorf("Failed to export environment variable: %s", apkListEnvKey)
+	// Use the correct env key for the selected build type
+	if config.BuildType == "apk" {
+		envKey = apkListEnvKey
+	} else {
+		envKey = aabListEnvKey
 	}
-	log.Printf("  Env    [ $%s = %s ]", apkListEnvKey, paths)
+	if err := tools.ExportEnvironmentWithEnvman(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
+		return fmt.Errorf("Failed to export environment variable: %s", envKey)
+	}
+	log.Printf("  Env    [ $%s = %s ]", envKey, paths)
 
 	fmt.Println()
 
 	log.Infof("Export mapping files:")
 	fmt.Println()
 
-	mappings, err := getArtifacts(gradleProject, started, mappingFilePattern, true)
+	mappings, err := getArtifacts(gradleProject, started, []string{mappingFilePattern}, true)
 	if err != nil {
 		log.Warnf("Failed to find mapping files, error: %v", err)
 		return nil
@@ -256,10 +304,28 @@ func main() {
 	}
 
 	stepconf.Print(config)
-
 	fmt.Println()
 
-	if err := mainE(config); err != nil {
+	//
+	// Config migration from apk_path_pattern to app_path_pattern
+	// The apk_path_pattern is deprecated
+	// New input: app_path_pattern
+	// If the apk_path_pattern is used log a warning, and still use the deprecated apk_path_pattern and ignore the new app_path_pattern temporarily
+	var appPatterns []string
+	if strings.TrimSpace(config.APKPathPattern) != "" {
+		log.Warnf(`Step input 'APK location pattern' (apk_path_pattern) is deprecated and will be removed on 20 August 2019,
+use 'App artifact (.apk, .aab) location pattern' (app_path_pattern) instead.`)
+		fmt.Println()
+		log.Infof(`'APK location pattern' (apk_path_pattern) is used, 'App artifact (.apk, .aab) location pattern' (app_path_pattern) is ignored.
+Use 'App artifact (.apk, .aab) location pattern' and set 'APK location pattern' to empty value.`)
+		fmt.Println()
+
+		appPatterns = append(strings.Split(config.APKPathPattern, "\n"))
+	} else {
+		appPatterns = append(strings.Split(config.AppPathPattern, "\n"))
+	}
+
+	if err := mainE(config, appPatterns); err != nil {
 		failf("%s", err)
 	}
 

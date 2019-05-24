@@ -46,12 +46,30 @@ inputs:
       description: |
         Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       is_required: false
-  - apk_path_pattern: "*/build/outputs/apk/*.apk"
+  - build_type: apk
+    opts:
+      title: Build type
+      summary: |
+        Set the build type that you want to build.
+      description: |
+        Set the build type that you want to build.
+      is_required: true
+      value_options:
+      - "apk"
+      - "aab"
+  - app_path_pattern: |- 
+      */build/outputs/apk/*.apk
+      */build/outputs/bundle/*.aab
     opts:
       category: Options
-      title: APK location pattern
-      summary: Will find the APK files with the given pattern.
-      description: Will find the APK files with the given pattern.
+      title: App artifact (.apk, .aab) location pattern
+      summary: Will find the APK or AAB files - `depending on the build type input` - with the given pattern.
+      description: |
+        Will find the APK or AAB files - `depending on the build type input` - with the given pattern.<br/>
+        Separate patters with a newline.
+
+        **Note**<br/>
+        The step will export only the selected artifact type - `build type` - even if the filter would accept other artifact types as well.
       is_required: true
   - cache_level: "only_deps"
     opts:
@@ -73,6 +91,16 @@ inputs:
       summary: Extra arguments passed to the gradle task
       description: Extra arguments passed to the gradle task
       is_required: false
+  - apk_path_pattern:
+    opts:
+      category: Deprecated
+      title: APK location pattern
+      summary: This input is **DEPRECATED** - use the App location pattern input instead
+      description: |
+        This input is **DEPRECATED** - use the App location pattern input instead
+
+        
+        Will find the APK files with the given pattern.
 outputs:
   - BITRISE_APK_PATH:
     opts:
@@ -91,6 +119,23 @@ outputs:
         This output will include the paths of the generated APKs
         after filtering based on the filter inputs.
         The paths are separated with `|` character, for example, `app-armeabi-v7a-debug.apk|app-mips-debug.apk|app-x86-debug.apk`
+  - BITRISE_AAB_PATH:
+    opts:
+      title: "Path of the generated AAB"
+      summary: "Path of the generated (and copied) AAB - after filtering."
+      description: |-
+        This output will include the path of the generated AAB
+        after filtering based on the filter inputs.
+        If the build generates more than one AAB which fulfills the
+        filter inputs, this output will contain the last one's path.
+  - BITRISE_AAB_PATH_LIST:
+    opts:
+      title: "List of the generated AAB paths"
+      summary: "List of the generated (and copied) AAB paths - after filtering."
+      description: |-
+        This output will include the paths of the generated AABs
+        after filtering based on the filter inputs.
+        The paths are separated with `|` character, for example, `app--debug.aab|app-mips-debug.aab`
   - BITRISE_MAPPING_PATH:
     opts:
       title: "Path of the generated mapping.txt"
