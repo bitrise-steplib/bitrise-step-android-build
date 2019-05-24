@@ -191,10 +191,10 @@ func mainE(config Configs, appPatterns []string) error {
 		artPaths = append(artPaths, a.Name)
 	}
 
-	log.Donef("Used patterns for generated artifact search:")
+	log.Donef("Used patterns for generated ")
 	log.Printf(strings.Join(appPatterns, "\n"))
 	fmt.Println()
-	log.Donef("Found artifacts:")
+	log.Donef("Found artifacts")
 	log.Printf(strings.Join(artPaths, "\n"))
 	fmt.Println()
 
