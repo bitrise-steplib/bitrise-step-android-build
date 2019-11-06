@@ -3,7 +3,30 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:85393b915166ab4c4adc6578bdfaf778738b1b8a265a2f7555904755199c1d6f"
+  digest = "1:6f561a11e048a6b3e76fd7c89288e6b078f299afcd2d38e0f9616807ec541fb2"
+  name = "github.com/bitrise-io/go-android"
+  packages = [
+    "cache",
+    "gradle",
+  ]
+  pruneopts = "UT"
+  revision = "a28433b493561a6575fcec699f93f124d22150d1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5e4f167418977858782db1d8820e8c2ccd368c8857e0806bcbd07d0bc09e1e38"
+  name = "github.com/bitrise-io/go-steputils"
+  packages = [
+    "cache",
+    "stepconf",
+    "tools",
+  ]
+  pruneopts = "UT"
+  revision = "f540824d77dfd382ce84fd0ee0a9da2fba1cce0a"
+
+[[projects]]
+  branch = "master"
+  digest = "1:b209a202ccd9aa7f107e22bc33dbd6e06de12dd6269ae2f466599ad1ca8b07b0"
   name = "github.com/bitrise-io/go-utils"
   packages = [
     "colorstring",
@@ -18,35 +41,15 @@
     "ziputil",
   ]
   pruneopts = "UT"
-  revision = "2a09aab8380d7842750328aebd5671bcccea89c8"
-
-[[projects]]
-  digest = "1:216474eb0a9b9891bafc40f73daefc1db57900d009153332727793fe12d72c6f"
-  name = "github.com/bitrise-steplib/bitrise-step-android-unit-test"
-  packages = ["cache"]
-  pruneopts = "UT"
-  revision = "b066992f1bb47fbcd9c2d17c7be772f3966fdf19"
-  version = "0.9.5"
+  revision = "2c67c48e7086cfd8f9a29bfac2cd420d4dd1d2f9"
 
 [[projects]]
   branch = "master"
-  digest = "1:4490bcf821454642055ce07c60088276229717012434863fd172f31268eb6803"
+  digest = "1:39597fa9ece2a865436233a9ce80f148ab6d17237f004742c6b37703d6318960"
   name = "github.com/bitrise-tools/go-android"
   packages = ["gradle"]
   pruneopts = "UT"
-  revision = "8082fe069ed29f394c2fd0724dd6bdc64e5cf6b4"
-
-[[projects]]
-  branch = "master"
-  digest = "1:af7ba84c2a92fb5819d5fe643dfaed48cb6b8704914efe8d8644875b1432e413"
-  name = "github.com/bitrise-tools/go-steputils"
-  packages = [
-    "cache",
-    "stepconf",
-    "tools",
-  ]
-  pruneopts = "UT"
-  revision = "ec226b2359fcd806be64f0ad2217d8e741a1ff11"
+  revision = "a28433b493561a6575fcec699f93f124d22150d1"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -81,27 +84,36 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:5da8ce674952566deae4dbc23d07c85caafc6cfa815b0b3e03e41979cedb8750"
+  digest = "1:99d32780e5238c2621fff621123997c3e3cca96db8be13179013aea77dfab551"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
     "require",
   ]
   pruneopts = "UT"
-  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
-  version = "v1.3.0"
+  revision = "221dbe5ed46703ee255b1da0dec05086f5035f62"
+  version = "v1.4.0"
+
+[[projects]]
+  digest = "1:f26a5d382387e03a40d1471dddfba85dfff9bf05352d7e42d37612677c4d3c5c"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f90ceb4f409096b60e2e9076b38b304b8246e5fa"
+  version = "v2.2.5"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/bitrise-io/go-android/cache",
+    "github.com/bitrise-io/go-android/gradle",
+    "github.com/bitrise-io/go-steputils/stepconf",
+    "github.com/bitrise-io/go-steputils/tools",
     "github.com/bitrise-io/go-utils/log",
     "github.com/bitrise-io/go-utils/pathutil",
     "github.com/bitrise-io/go-utils/sliceutil",
-    "github.com/bitrise-steplib/bitrise-step-android-unit-test/cache",
     "github.com/bitrise-tools/go-android/gradle",
-    "github.com/bitrise-tools/go-steputils/stepconf",
-    "github.com/bitrise-tools/go-steputils/tools",
     "github.com/kballard/go-shellquote",
     "github.com/stretchr/testify/require",
   ]
