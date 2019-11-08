@@ -3,7 +3,11 @@
   branch = "master"
 
 [[constraint]]
-  name = "github.com/bitrise-tools/go-steputils"
+  name = "github.com/bitrise-io/go-android"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/bitrise-io/go-steputils"
   branch = "master"
 
 [prune]

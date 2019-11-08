@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bitrise-tools/go-android/gradle"
+	"github.com/bitrise-io/go-android/gradle"
 )
 
 func TestFilterVariants(t *testing.T) {

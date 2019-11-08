@@ -1,6 +1,6 @@
 package cache
 
-import "github.com/bitrise-tools/go-steputils/tools"
+import "github.com/bitrise-io/go-steputils/tools"
 import "os"
 import "strings"
 
@@ -52,6 +52,11 @@ func combineEnvContent(envVar string, values []string) error {
 	content := os.Getenv(envVar)
 
 	content += "\n" + strings.Join(values, "\n") + "\n"
+
+	// Set envirmonet varible so that an other cache usage does not override
+	if err := os.Setenv(envVar, content); err != nil {
+		return err
+	}
 
 	return tools.ExportEnvironmentWithEnvman(envVar, content)
 }
