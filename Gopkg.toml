@@ -1,14 +1,22 @@
 [[constraint]]
-  name = "github.com/bitrise-io/go-utils"
   branch = "master"
-
-[[constraint]]
   name = "github.com/bitrise-io/go-android"
-  branch = "master"
 
 [[constraint]]
-  name = "github.com/bitrise-io/go-steputils"
   branch = "master"
+  name = "github.com/bitrise-io/go-steputils"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/bitrise-io/go-utils"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kballard/go-shellquote"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.5.1"
 
 [prune]
   go-tests = true
