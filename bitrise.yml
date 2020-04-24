@@ -28,7 +28,7 @@ workflows:
     - nested-module
 
   nested-module:
-    title: Test simple android project & mono repo projects in source dir for APK build type
+    title: Test simple android projectwith nested module
     steps:
     - script:
         inputs:
@@ -42,8 +42,7 @@ workflows:
     - script:
         inputs:
         - content: |-
-            # git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
-            cp -r /Users/lpusok/Develop/samples/MyApplication2/* .
+            git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
