@@ -5,8 +5,9 @@ app:
   envs:
   - BITRISE_STEP_GIT_CLONE_URL: https://github.com/bitrise-steplib/bitrise-step-android-build.git
   - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
-  - SIMPLE_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-multiple-test-results-sample.git
-  - MONO_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-testing.git
+  - SIMPLE_REPO_GIT_CLONE_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+  - SIMPLE_REPO_BRANCH: maintenance
+  - MONO_REPO_GIT_CLONE_URL: https://github.com/bitrise-io/android-testing.git
 
   - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
 
@@ -24,6 +25,42 @@ workflows:
     - simple-and-mono-repo-in-src-dir-aab
     - simple-and-mono-repo-in-root-tmp-dir-aab
     - _check-artifacts-aab
+    - nested-module
+
+  nested-module:
+    title: Test simple android project & mono repo projects in source dir for APK build type
+    steps:
+    - script:
+        inputs:
+        - content: rm -rf _tmp
+    - change-workdir:
+        title: cd $ORIG_BITRISE_SOURCE_DIR/_tmp
+        run_if: true
+        inputs:
+        - path: ./_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: |-
+            # git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
+            cp -r /Users/lpusok/Develop/samples/MyApplication2/* .
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test nested module
+        inputs:
+        - module: app:mylibrary
+    - script:
+        title: Check outputs
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            if [ -z "$BITRISE_APK_PATH" ] ; then echo "BITRISE_APK_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_APK_PATH_LIST" ] ; then echo "BITRISE_APK_PATH_LIST env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_MAPPING_PATH" ] ; then echo "BITRISE_MAPPING_PATH env is empty" ; exit 1 ; fi ;
 
   simple-and-mono-repo-in-src-dir:
     title: Test simple android project & mono repo projects in source dir for APK build type
@@ -39,7 +76,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
@@ -182,7 +219,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
@@ -253,7 +290,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
