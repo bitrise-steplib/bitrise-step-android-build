@@ -83,6 +83,7 @@ workflows:
         title: Test simple android project
         inputs:
         - module: another_app
+        - variant: DemoDebug
     - script:
         title: Check outputs
         inputs:
@@ -148,7 +149,7 @@ workflows:
         title: Test simple repo
         inputs:
         - module: app
-        - variant: Debug
+        - variant: DemoDebug
     - script:
         title: Check outputs
         inputs:
