@@ -5,8 +5,9 @@ app:
   envs:
   - BITRISE_STEP_GIT_CLONE_URL: https://github.com/bitrise-steplib/bitrise-step-android-build.git
   - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
-  - SIMPLE_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-multiple-test-results-sample.git
-  - MONO_REPO_GIT_CLONE_URL: https://github.com/bitrise-samples/android-testing.git
+  - SIMPLE_REPO_GIT_CLONE_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+  - SIMPLE_REPO_BRANCH: maintenance
+  - MONO_REPO_GIT_CLONE_URL: https://github.com/bitrise-io/android-testing.git
 
   - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
 
@@ -24,6 +25,41 @@ workflows:
     - simple-and-mono-repo-in-src-dir-aab
     - simple-and-mono-repo-in-root-tmp-dir-aab
     - _check-artifacts-aab
+    - _clear-artifacts
+    - nested-module
+
+  nested-module:
+    title: Test simple android projectwith nested module
+    steps:
+    - script:
+        inputs:
+        - content: rm -rf _tmp
+    - change-workdir:
+        title: cd $ORIG_BITRISE_SOURCE_DIR/_tmp
+        run_if: true
+        inputs:
+        - path: ./_tmp
+        - is_create_path: true
+    - script:
+        inputs:
+        - content: |-
+            git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test nested module
+        inputs:
+        - module: app:mylibrary
+    - script:
+        title: Check outputs
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+
+            if [ -z "$BITRISE_APK_PATH" ] ; then echo "BITRISE_APK_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_APK_PATH_LIST" ] ; then echo "BITRISE_APK_PATH_LIST env is empty" ; exit 1 ; fi ;
 
   simple-and-mono-repo-in-src-dir:
     title: Test simple android project & mono repo projects in source dir for APK build type
@@ -39,7 +75,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
@@ -47,6 +83,7 @@ workflows:
         title: Test simple android project
         inputs:
         - module: another_app
+        - variant: DemoRelease
     - script:
         title: Check outputs
         inputs:
@@ -112,7 +149,7 @@ workflows:
         title: Test simple repo
         inputs:
         - module: app
-        - variant: Debug
+        - variant: Release
     - script:
         title: Check outputs
         inputs:
@@ -182,7 +219,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
@@ -244,6 +281,7 @@ workflows:
             set -ex
 
             rm -rf "$ORIG_BITRISE_SOURCE_DIR/_tmp"
+            rm -rf "$ORIG_BITRISE_SOURCE_DIR/tmp"
             mkdir -p "$ORIG_BITRISE_SOURCE_DIR/tmp/_tmp"
     - change-workdir:
         title: cd $ORIG_BITRISE_SOURCE_DIR/tmp/_tmp
@@ -253,7 +291,7 @@ workflows:
         - is_create_path: true
     - script:
         inputs:
-        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b maintenance .
+        - content: git clone $SIMPLE_REPO_GIT_CLONE_URL -b $SIMPLE_REPO_BRANCH .
     - install-missing-android-tools:
         inputs:
         - gradlew_path: ./gradlew
@@ -334,19 +372,19 @@ workflows:
   _check-artifacts:
     steps:
     - script:
-        title: Clear exported files
+        title: Check exported files
         inputs:
         - content: |-
             #!/usr/bin/env bash
             set -ex
 
-            [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
+            ls -al $BITRISE_DEPLOY_DIR
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-mapping.txt ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/another_app-demo-release-unsigned.apk ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]] && exit 1
+            exit 0
 
   _check-artifacts-aab:
     steps:
@@ -357,9 +395,14 @@ workflows:
             #!/usr/bin/env bash
             set -ex
 
-            [[ -f $BITRISE_DEPLOY_DIR/_tmp-another_app.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/app.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app.aab ]]
+            ls -al $BITRISE_DEPLOY_DIR
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app-anotherDemo-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app-demo-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app-full-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-demo-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-full-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app.aab ]] && exit 1
+            exit 0
 
   go-tests:
     steps:
