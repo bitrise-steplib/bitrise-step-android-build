@@ -25,6 +25,7 @@ workflows:
     - simple-and-mono-repo-in-src-dir-aab
     - simple-and-mono-repo-in-root-tmp-dir-aab
     - _check-artifacts-aab
+    - _clear-artifacts
     - nested-module
 
   nested-module:
@@ -59,7 +60,6 @@ workflows:
 
             if [ -z "$BITRISE_APK_PATH" ] ; then echo "BITRISE_APK_PATH env is empty" ; exit 1 ; fi ;
             if [ -z "$BITRISE_APK_PATH_LIST" ] ; then echo "BITRISE_APK_PATH_LIST env is empty" ; exit 1 ; fi ;
-            if [ -z "$BITRISE_MAPPING_PATH" ] ; then echo "BITRISE_MAPPING_PATH env is empty" ; exit 1 ; fi ;
 
   simple-and-mono-repo-in-src-dir:
     title: Test simple android project & mono repo projects in source dir for APK build type
@@ -280,6 +280,7 @@ workflows:
             set -ex
 
             rm -rf "$ORIG_BITRISE_SOURCE_DIR/_tmp"
+            rm -rf "$ORIG_BITRISE_SOURCE_DIR/tmp"
             mkdir -p "$ORIG_BITRISE_SOURCE_DIR/tmp/_tmp"
     - change-workdir:
         title: cd $ORIG_BITRISE_SOURCE_DIR/tmp/_tmp
