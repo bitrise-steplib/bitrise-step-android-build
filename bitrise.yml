@@ -384,7 +384,7 @@ workflows:
             [[ ! -f $BITRISE_DEPLOY_DIR/another_app-demo-release-unsigned.apk ]] && exit 1
             [[ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]] && exit 1
             [[ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]] && exit 1
-            [[ ! -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]] && exit 1
+            exit 0
 
   _check-artifacts-aab:
     steps:
@@ -396,9 +396,13 @@ workflows:
             set -ex
 
             ls -al $BITRISE_DEPLOY_DIR
-            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app.aab ]] && exit 1
-            [[ ! -f $BITRISE_DEPLOY_DIR/app.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app-anotherDemo-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app-demo-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app-full-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-demo-debug.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-full-debug.aab ]] && exit 1
             [[ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app.aab ]] && exit 1
+            exit 0
 
   go-tests:
     steps:
