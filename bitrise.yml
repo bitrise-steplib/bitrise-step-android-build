@@ -372,17 +372,15 @@ workflows:
   _check-artifacts:
     steps:
     - script:
-        title: Clear exported files
+        title: Check exported files
         inputs:
         - content: |-
             #!/usr/bin/env bash
             set -ex
 
-            [[ -f $BITRISE_DEPLOY_DIR/app-debug.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
             [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-debug-androidTest.apk ]]
+            [[ -f $BITRISE_DEPLOY_DIR/release-unsigned.apk ]]
             [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
             [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
 
