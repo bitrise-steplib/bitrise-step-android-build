@@ -378,11 +378,13 @@ workflows:
             #!/usr/bin/env bash
             set -ex
 
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]]
-            [[ -f $BITRISE_DEPLOY_DIR/another_app-release-unsigned.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/release-unsigned.apk ]]
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]]
-            [[ -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]]
+            ls -al $BITRISE_DEPLOY_DIR
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-mapping.txt ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/another_app-mapping.txt ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/another_app-demo-release-unsigned.apk ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app-release-unsigned.apk ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug.apk ]] && exit 1
+            [[ ! -f $(ls $BITRISE_DEPLOY_DIR/IdlingResourceSample-app-debug-20*.apk) ]] && exit 1
 
   _check-artifacts-aab:
     steps:
@@ -393,9 +395,10 @@ workflows:
             #!/usr/bin/env bash
             set -ex
 
-            [[ -f $BITRISE_DEPLOY_DIR/_tmp-another_app.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/app.aab ]]
-            [[ -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app.aab ]]
+            ls -al $BITRISE_DEPLOY_DIR
+            [[ ! -f $BITRISE_DEPLOY_DIR/_tmp-another_app.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/app.aab ]] && exit 1
+            [[ ! -f $BITRISE_DEPLOY_DIR/IdlingResourceSample-app.aab ]] && exit 1
 
   go-tests:
     steps:
