@@ -92,6 +92,27 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 	return paths, nil
 }
 
+func filterUtilityVariants(variants []string) []string {
+	ignoredSuffixes := [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
+	var filteredVariants []string
+
+	for _, v := range variants {
+		shouldIgnore := false
+		for _, suffix := range ignoredSuffixes {
+			if strings.HasSuffix(v, suffix) {
+				shouldIgnore = true
+				break
+			}
+		}
+
+		if !shouldIgnore {
+			filteredVariants = append(filteredVariants, v)
+		}
+	}
+
+	return filteredVariants
+}
+
 func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
 	// if module set: drop all the other modules
 	if module != "" {
@@ -102,8 +123,12 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 		variantsMap = gradle.Variants{module: v}
 	}
 
-	// if variant not set: use all variants
+	// if variant not set: use all variants, except utility ones
 	if variant == "" {
+		for module, variants := range variantsMap {
+			variantsMap[module] = filterUtilityVariants(variants)
+		}
+
 		return variantsMap, nil
 	}
 

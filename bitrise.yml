@@ -299,7 +299,7 @@ workflows:
         title: Test simple repo
         inputs:
         - module: app
-        - variant: Debug
+        - variant:
         - build_type: aab
     - script:
         title: Check outputs

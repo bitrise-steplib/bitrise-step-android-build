@@ -91,4 +91,24 @@ func TestFilterVariants(t *testing.T) {
 
 		require.Equal(t, expectedVariants, filtered)
 	}
+
+	t.Log("filter out utility variants")
+	{
+		variants := gradle.Variants{
+			"module1": []string{
+				"DemoDebug", "DemoDebugAndroidTestClasses", "DemoDebugAndroidTestResources",
+				"DemoDebugClasses", "DemoDebugResources", "DemoDebugUnitTestClasses",
+				"DemoRelease", "DemoReleaseClasses", "DemoReleaseResources", "DemoReleaseUnitTestClasses",
+			},
+		}
+
+		filtered, err := filterVariants("module1", "", variants)
+		require.NoError(t, err)
+
+		expectedVariants := gradle.Variants{
+			"module1": []string{"DemoDebug", "DemoRelease"},
+		}
+
+		require.Equal(t, expectedVariants, filtered)
+	}
 }
