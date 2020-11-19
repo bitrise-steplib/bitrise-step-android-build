@@ -1,4 +1,4 @@
-itle: Android Build
+title: Android Build
 summary: Builds your Android project with Gradle.
 description: |-
   
@@ -12,11 +12,11 @@ description: |-
   1. Make sure the **Project Location** input points to the root directory of your Android project.
   1. In the **Module** input, set the module that you want to build.
      
-     You can find the available modules in Android Studio. If you leave the input empty, the Step will use the default module that is set when you add your project to Bitrise. 
+     You can find the available modules in Android Studio.
 
   1. In the **Variant** input, set the variant that you want to build. 
      
-     You can find the available variants in Android Studio. If you leave the input empty, the Step will use the default variant that is set when you add your project to Bitrise. 
+     You can find the available variants in Android Studio.
      
   1. In the **Build type** input, select the file type you want to build. 
 
