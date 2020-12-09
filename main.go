@@ -98,7 +98,7 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 	return paths, nil
 }
 
-func filterUtilityVariants(variants []string) []string {
+func filterNonUtilityVariants(variants []string) []string {
 	var filteredVariants []string
 
 	for _, v := range variants {
@@ -121,8 +121,8 @@ func filterUtilityVariants(variants []string) []string {
 func separateVariants(variantsAsOneLine string) []string {
 	variants := strings.Split(variantsAsOneLine, newLine)
 
-	for _, variant := range variants {
-		variant = strings.TrimSpace(variant)
+	for index, variant := range variants {
+		variants[index] = strings.TrimSpace(variant)
 	}
 
 	return variants
@@ -141,7 +141,7 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 	// if variant not set: use all variants, except utility ones
 	if variant == "" {
 		for module, variants := range variantsMap {
-			variantsMap[module] = filterUtilityVariants(variants)
+			variantsMap[module] = filterNonUtilityVariants(variants)
 		}
 
 		return variantsMap, nil
@@ -154,7 +154,7 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 		found := false
 		for m, moduleVariants := range variantsMap {
 			for _, v := range moduleVariants {
-				if strings.ToLower(v) == strings.ToLower(variant) {
+				if strings.EqualFold(v, variant) {
 					filteredVariants[m] = append(filteredVariants[m], v)
 					found = true
 				}
