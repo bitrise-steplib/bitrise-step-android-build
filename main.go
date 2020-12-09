@@ -26,6 +26,12 @@ const (
 
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
+
+	newLine = `\n`
+)
+
+var (
+	ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
 )
 
 // Configs ...
@@ -92,6 +98,36 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 	return paths, nil
 }
 
+func filterNonUtilityVariants(variants []string) []string {
+	var filteredVariants []string
+
+	for _, v := range variants {
+		shouldIgnore := false
+		for _, suffix := range ignoredSuffixes {
+			if strings.HasSuffix(v, suffix) {
+				shouldIgnore = true
+				break
+			}
+		}
+
+		if !shouldIgnore {
+			filteredVariants = append(filteredVariants, v)
+		}
+	}
+
+	return filteredVariants
+}
+
+func separateVariants(variantsAsOneLine string) []string {
+	variants := strings.Split(variantsAsOneLine, newLine)
+
+	for index, variant := range variants {
+		variants[index] = strings.TrimSpace(variant)
+	}
+
+	return variants
+}
+
 func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
 	// if module set: drop all the other modules
 	if module != "" {
@@ -102,23 +138,34 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 		variantsMap = gradle.Variants{module: v}
 	}
 
-	// if variant not set: use all variants
+	// if variant not set: use all variants, except utility ones
 	if variant == "" {
+		for module, variants := range variantsMap {
+			variantsMap[module] = filterNonUtilityVariants(variants)
+		}
+
 		return variantsMap, nil
 	}
 
+	variants := separateVariants(variant)
+
 	filteredVariants := gradle.Variants{}
-	for m, variants := range variantsMap {
-		for _, v := range variants {
-			if strings.ToLower(v) == strings.ToLower(variant) {
-				filteredVariants[m] = append(filteredVariants[m], v)
+	for _, variant := range variants {
+		found := false
+		for m, moduleVariants := range variantsMap {
+			for _, v := range moduleVariants {
+				if strings.EqualFold(v, variant) {
+					filteredVariants[m] = append(filteredVariants[m], v)
+					found = true
+				}
 			}
+		}
+
+		if !found {
+			return nil, fmt.Errorf("variant: %s not found in any module", variant)
 		}
 	}
 
-	if len(filteredVariants) == 0 {
-		return nil, fmt.Errorf("variant: %s not found in any module", variant)
-	}
 	return filteredVariants, nil
 }
 
