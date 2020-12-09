@@ -30,6 +30,10 @@ const (
 	newLine = `\n`
 )
 
+var (
+	ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
+)
+
 // Configs ...
 type Configs struct {
 	ProjectLocation string `env:"project_location,dir"`
@@ -95,7 +99,6 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 }
 
 func filterUtilityVariants(variants []string) []string {
-	ignoredSuffixes := [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
 	var filteredVariants []string
 
 	for _, v := range variants {
@@ -151,7 +154,6 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 		found := false
 		for m, moduleVariants := range variantsMap {
 			for _, v := range moduleVariants {
-				fmt.Println(v)
 				if strings.ToLower(v) == strings.ToLower(variant) {
 					filteredVariants[m] = append(filteredVariants[m], v)
 					found = true
