@@ -148,7 +148,6 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 
 	filteredVariants := gradle.Variants{}
 	for _, variant := range variants {
-
 		found := false
 		for m, moduleVariants := range variantsMap {
 			for _, v := range moduleVariants {
