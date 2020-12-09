@@ -26,6 +26,8 @@ const (
 
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
+
+	newLine = `\n`
 )
 
 // Configs ...
@@ -113,6 +115,16 @@ func filterUtilityVariants(variants []string) []string {
 	return filteredVariants
 }
 
+func separateVariants(variantsAsOneLine string) []string {
+	variants := strings.Split(variantsAsOneLine, newLine)
+
+	for _, variant := range variants {
+		variant = strings.TrimSpace(variant)
+	}
+
+	return variants
+}
+
 func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
 	// if module set: drop all the other modules
 	if module != "" {
@@ -132,18 +144,27 @@ func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle
 		return variantsMap, nil
 	}
 
+	variants := separateVariants(variant)
+
 	filteredVariants := gradle.Variants{}
-	for m, variants := range variantsMap {
-		for _, v := range variants {
-			if strings.ToLower(v) == strings.ToLower(variant) {
-				filteredVariants[m] = append(filteredVariants[m], v)
+	for _, variant := range variants {
+
+		found := false
+		for m, moduleVariants := range variantsMap {
+			for _, v := range moduleVariants {
+				fmt.Println(v)
+				if strings.ToLower(v) == strings.ToLower(variant) {
+					filteredVariants[m] = append(filteredVariants[m], v)
+					found = true
+				}
 			}
+		}
+
+		if !found {
+			return nil, fmt.Errorf("variant: %s not found in any module", variant)
 		}
 	}
 
-	if len(filteredVariants) == 0 {
-		return nil, fmt.Errorf("variant: %s not found in any module", variant)
-	}
 	return filteredVariants, nil
 }
 

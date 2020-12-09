@@ -42,9 +42,9 @@ inputs:
     opts:
       title: Variant
       summary: |
-        Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
+        Set the variant(s) that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       description: |
-        Set the variant that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
+        Set the variant(s) that you want to build. To see your available variants please open your project in Android Studio and go in [Project Structure] -> variants section.
       is_required: false
   - build_type: apk
     opts:
