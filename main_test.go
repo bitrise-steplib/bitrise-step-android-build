@@ -104,18 +104,6 @@ func TestFilterVariants(t *testing.T) {
 		require.Equal(t, expectedVariants, filtered)
 	}
 
-	t.Log("exact match for module and multiple variants")
-	{
-		filtered, err := filterVariants("module1", `variant1\nvariant2`, variants)
-		require.NoError(t, err)
-
-		expectedVariants := gradle.Variants{
-			"module1": []string{"variant1", "variant2"},
-		}
-
-		require.Equal(t, expectedVariants, filtered)
-	}
-
 	t.Log("exact match for multiple variants")
 	{
 		filtered, err := filterVariants("", `shared\nshared2`, variants)
