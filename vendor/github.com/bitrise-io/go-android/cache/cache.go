@@ -3,8 +3,11 @@ package cache
 import (
 	"crypto/md5"
 	"fmt"
+	"github.com/bitrise-io/go-utils/command"
 	"io"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -90,9 +93,11 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel cache.Level) ([]
 			return nil
 		}
 
-		md5Hash, err := computeMD5String(path)
+		unmodified := prepareUnmodifiedIndicator(path)
+
+		md5Hash, err := computeMD5String(unmodified)
 		if err != nil {
-			log.Warnf("Failed to compute MD5 hash of %s: %s", path, err)
+			log.Warnf("Failed to compute MD5 hash of %s -> %s: %s", path, unmodified, err)
 			return nil
 		}
 
@@ -134,6 +139,46 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel cache.Level) ([]
 	}
 
 	return includePths, nil
+}
+
+/*
+If the indicator is version controlled in git and has changes, we create a copy of it with its original content.
+*/
+func prepareUnmodifiedIndicator(indicator string) string {
+	indicatorDir := filepath.Dir(indicator)
+	indicatorFile := filepath.Base(indicator)
+
+	cmd := exec.Command("git", "ls-files", "--error-unmatch", indicatorFile)
+	cmd.Dir = indicatorDir
+	m := command.NewWithCmd(cmd)
+	code, _ := m.RunAndReturnExitCode()
+	if code != 0 {
+		return indicator
+	}
+	cmd = exec.Command("git", "diff", "-s", "--exit-code", indicatorFile)
+	cmd.Dir = indicatorDir
+	m = command.NewWithCmd(cmd)
+	code, _ = m.RunAndReturnExitCode()
+	if code == 0 {
+		return indicator
+	}
+
+	file, err := ioutil.TempFile(os.TempDir(), "indicator")
+	if err != nil {
+		return indicator
+	}
+
+	cmd = exec.Command("git", "show", "HEAD:"+indicatorFile)
+	cmd.Dir = indicatorDir
+	m = command.NewWithCmd(cmd).SetStdout(file).SetStderr(os.Stderr)
+	code, err = m.RunAndReturnExitCode()
+	if err := file.Close(); err != nil {
+		return indicator
+	}
+	if code != 0 {
+		return indicator
+	}
+	return file.Name()
 }
 
 func computeMD5String(filePath string) (string, error) {
