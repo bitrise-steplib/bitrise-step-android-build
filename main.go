@@ -9,6 +9,7 @@ import (
 
 	"github.com/bitrise-io/go-android/cache"
 	"github.com/bitrise-io/go-android/gradle"
+	utilscache "github.com/bitrise-io/go-steputils/cache"
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-steputils/tools"
 	"github.com/bitrise-io/go-utils/log"
@@ -378,7 +379,7 @@ Use 'App artifact (.apk, .aab) location pattern' and set 'APK location pattern' 
 
 	fmt.Println()
 	log.Infof("Collecting cache:")
-	if warning := cache.Collect(config.ProjectLocation, cache.Level(config.CacheLevel)); warning != nil {
+	if warning := cache.Collect(config.ProjectLocation, utilscache.Level(config.CacheLevel)); warning != nil {
 		log.Warnf("%s", warning)
 	}
 
