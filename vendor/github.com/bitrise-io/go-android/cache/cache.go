@@ -3,7 +3,6 @@ package cache
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/bitrise-io/go-utils/command"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/cache"
+	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/fileutil"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
@@ -93,7 +93,11 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel cache.Level) ([]
 			return nil
 		}
 
-		unmodified := prepareUnmodifiedIndicator(path)
+		unmodified, err := prepareUnmodifiedIndicator(path)
+		if err != nil {
+			log.Debugf(err.Error())
+			unmodified = path
+		}
 
 		md5Hash, err := computeMD5String(unmodified)
 		if err != nil {
@@ -144,41 +148,44 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel cache.Level) ([]
 /*
 If the indicator is version controlled in git and has changes, we create a copy of it with its original content.
 */
-func prepareUnmodifiedIndicator(indicator string) string {
+func prepareUnmodifiedIndicator(indicator string) (unmodified string, err error) {
 	indicatorDir := filepath.Dir(indicator)
 	indicatorFile := filepath.Base(indicator)
 
 	cmd := exec.Command("git", "ls-files", "--error-unmatch", indicatorFile)
 	cmd.Dir = indicatorDir
 	m := command.NewWithCmd(cmd)
-	code, _ := m.RunAndReturnExitCode()
+	code, err := m.RunAndReturnExitCode()
 	if code != 0 {
-		return indicator
+		return "", fmt.Errorf("%s is not under git version control", indicator)
 	}
 	cmd = exec.Command("git", "diff", "-s", "--exit-code", indicatorFile)
 	cmd.Dir = indicatorDir
 	m = command.NewWithCmd(cmd)
-	code, _ = m.RunAndReturnExitCode()
+	code, err = m.RunAndReturnExitCode()
 	if code == 0 {
-		return indicator
+		return "", fmt.Errorf("%s has not modification compared to HEAD", indicator)
 	}
 
 	file, err := ioutil.TempFile(os.TempDir(), "indicator")
 	if err != nil {
-		return indicator
+		return "", err
 	}
+	defer func() {
+		e := file.Close()
+		if err == nil {
+			err = e
+		}
+	}()
 
 	cmd = exec.Command("git", "show", "HEAD:"+indicatorFile)
 	cmd.Dir = indicatorDir
 	m = command.NewWithCmd(cmd).SetStdout(file).SetStderr(os.Stderr)
 	code, err = m.RunAndReturnExitCode()
-	if err := file.Close(); err != nil {
-		return indicator
+	if err != nil || code != 0 {
+		return "", err
 	}
-	if code != 0 {
-		return indicator
-	}
-	return file.Name()
+	return file.Name(), nil
 }
 
 func computeMD5String(filePath string) (string, error) {
