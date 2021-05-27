@@ -1,4 +1,4 @@
-# github.com/bitrise-io/go-android v0.0.0-20210527074909-5fac957238ff
+# github.com/bitrise-io/go-android v0.0.0-20210527143215-3ad22ad02e2e
 ## explicit
 github.com/bitrise-io/go-android/cache
 github.com/bitrise-io/go-android/gradle
