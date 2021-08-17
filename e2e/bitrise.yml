@@ -1,0 +1,193 @@
+format_version: "11"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+workflows:
+
+  test_nested_module:
+    title: Test simple Android project with nested module
+    envs:
+    - SAMPLE_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+    - BRANCH: maintenance
+    - EXPECTED_APK: mylibrary-debug-androidTest.apk
+    before_run:
+    - _setup
+    after_run:
+    - _check_apk
+    steps:
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test nested module
+        inputs:
+        - module: app:mylibrary
+
+  test_simple_apk:
+    title: Test simple Android project and APK building
+    envs:
+    - SAMPLE_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+    - BRANCH: maintenance
+    - EXPECTED_APK: another_app-demo-release-unsigned.apk
+    - EXPECTED_MAPPING: another_app-mapping.txt
+    before_run:
+    - _setup
+    after_run:
+    - _check_apk
+    - _check_mapping
+    steps:
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test simple android project
+        inputs:
+        - module: another_app
+        - variant: DemoRelease
+
+  test_monorepo_apk:
+    title: Test project in monorepo and APK building
+    envs:
+    - SAMPLE_APP_URL: https://github.com/bitrise-io/android-testing.git
+    - BRANCH: maintenance
+    - EXPECTED_APK: IdlingResourceSample-app-debug.apk
+    before_run:
+    - _setup
+    after_run:
+    - _check_apk
+    steps:
+    - change-workdir:
+        title: cd ./ui/espresso/IdlingResourceSample
+        inputs:
+        - path: ./ui/espresso/IdlingResourceSample
+        - is_create_path: true
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test monorepo
+        inputs:
+        - variant: Debug
+
+  test_simple_aab:
+    title: Test simple Android project and AAB building
+    envs:
+    - SAMPLE_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+    - BRANCH: maintenance
+    - EXPECTED_AAB: another_app-demo-release.aab
+    - EXPECTED_MAPPING: another_app-mapping.txt
+    before_run:
+    - _setup
+    after_run:
+    - _check_aab
+    - _check_mapping
+    steps:
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test simple android project
+        inputs:
+        - module: another_app
+        - variant: DemoRelease
+        - build_type: aab
+
+  test_monorepo_aab:
+    title: Test project in monorepo and AAB building
+    envs:
+    - SAMPLE_APP_URL: https://github.com/bitrise-io/android-testing.git
+    - BRANCH: maintenance
+    - EXPECTED_AAB: IdlingResourceSample-app.aab
+    before_run:
+    - _setup
+    after_run:
+    - _check_aab
+    steps:
+    - change-workdir:
+        title: cd ./ui/espresso/IdlingResourceSample
+        inputs:
+        - path: ./ui/espresso/IdlingResourceSample
+        - is_create_path: true
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Test monorepo
+        inputs:
+        - variant: Debug
+        - build_type: aab
+
+  _setup:
+    steps:
+    - script:
+        title: Delete _tmp dir
+        inputs:
+        - content: rm -rf _tmp
+    - change-workdir:
+        title: Switch working dir to _tmp
+        run_if: "true"
+        inputs:
+        - path: ./_tmp
+        - is_create_path: true
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: $SAMPLE_APP_URL
+        - clone_into_dir: .
+        - branch: $BRANCH
+
+  _check_apk:
+    steps:
+    - script:
+        title: Check exported APK
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+
+            echo "BITRISE_APK_PATH: $BITRISE_APK_PATH"
+            echo "BITRISE_APK_PATH_LIST: $BITRISE_APK_PATH_LIST"
+
+            if [ -z "$BITRISE_APK_PATH" ] ; then echo "BITRISE_APK_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_APK_PATH_LIST" ] ; then echo "BITRISE_APK_PATH_LIST env is empty" ; exit 1 ; fi ;
+
+            if [ ! -f $BITRISE_DEPLOY_DIR/$EXPECTED_APK ] ; then
+              echo "Expected APK ($EXPECTED_APK) is not found in deploy dir:"
+              ls -la $BITRISE_DEPLOY_DIR
+              exit 1
+            fi
+
+  _check_aab:
+    steps:
+    - script:
+        title: Check exported AAB
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+
+            echo "BITRISE_AAB_PATH: $BITRISE_AAB_PATH"
+            echo "BITRISE_AAB_PATH_LIST: $BITRISE_AAB_PATH_LIST"
+
+            if [ -z "$BITRISE_AAB_PATH" ] ; then echo "BITRISE_AAB_PATH env is empty" ; exit 1 ; fi ;
+            if [ -z "$BITRISE_AAB_PATH_LIST" ] ; then echo "BITRISE_AAB_PATH_LIST env is empty" ; exit 1 ; fi ;
+
+            if [ ! -f $BITRISE_DEPLOY_DIR/$EXPECTED_AAB ] ; then
+              echo "Expected AAB ($EXPECTED_AAB) is not found in deploy dir:"
+              ls -la $BITRISE_DEPLOY_DIR
+              exit 1
+            fi
+
+  _check_mapping:
+    steps:
+    - script:
+        title: Check exported mapping.txt
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+
+            echo "BITRISE_MAPPING_PATH: $BITRISE_MAPPING_PATH"
+
+            if [ -z "$BITRISE_MAPPING_PATH" ] ; then echo "BITRISE_MAPPING_PATH env is empty" ; exit 1 ; fi ;
+
+            if [ ! -f $BITRISE_DEPLOY_DIR/$EXPECTED_MAPPING ] ; then
+              echo "Expected mapping file ($EXPECTED_MAPPING) is not found in deploy dir:"
+              ls -la $BITRISE_DEPLOY_DIR
+              exit 1
+            fi
