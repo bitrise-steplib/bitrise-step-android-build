@@ -169,30 +169,29 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 
 	printAppSearchInfo(appArtifacts, appPathPatterns)
 
+	log.Donef("Exporting artifacts with the selected app type: %s", cfg.AppType)
+	// Filter appFiles by build type
+	var filteredArtifacts []gradle.Artifact
+	for _, a := range appArtifacts {
+		if filepath.Ext(a.Path) == fmt.Sprintf(".%s", cfg.AppType) {
+			filteredArtifacts = append(filteredArtifacts, a)
+		}
+	}
+
+	if len(filteredArtifacts) == 0 {
+		log.Warnf("No app artifacts found with patterns:\n%s", cfg.AppPathPattern)
+		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change app_path_pattern accordingly.")
+	}
+
 	return Result{
-		appFiles:     appArtifacts,
+		appFiles:     filteredArtifacts,
 		appType:      cfg.AppType,
 		mappingFiles: mappings,
 	}, nil
 }
 
 func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
-	log.Donef("Exporting artifacts with the selected (%s) app type", result.appType)
-	// Filter appFiles by build type
-	var filteredArtifacts []gradle.Artifact
-	for _, a := range result.appFiles {
-		if filepath.Ext(a.Path) == fmt.Sprintf(".%s", result.appType) {
-			filteredArtifacts = append(filteredArtifacts, a)
-		}
-	}
-
-	if len(filteredArtifacts) == 0 {
-		log.Warnf("No app artifacts found with patterns:\n%s", exportCfg.AppPathPattern)
-		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change app_path_pattern accordingly.")
-		return nil
-	}
-
-	exportedArtifactPaths, err := exportArtifacts(filteredArtifacts, exportCfg.DeployDir)
+	exportedArtifactPaths, err := exportArtifacts(result.appFiles, exportCfg.DeployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
@@ -202,8 +201,6 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	}
 
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
-
-	fmt.Println()
 
 	// Use the correct env key for the selected build type
 	var envKey string
@@ -215,6 +212,7 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	if err := tools.ExportEnvironmentWithEnvman(envKey, lastExportedArtifact); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", envKey)
 	}
+	fmt.Println()
 	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
 
 	var paths, sep string
