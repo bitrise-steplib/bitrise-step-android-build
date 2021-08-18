@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitrise-io/go-utils/sliceutil"
+
 	androidcache "github.com/bitrise-io/go-android/cache"
 	"github.com/bitrise-io/go-android/gradle"
 	"github.com/bitrise-io/go-steputils/cache"
@@ -13,14 +15,12 @@ import (
 	"github.com/bitrise-io/go-steputils/tools"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
-	"github.com/bitrise-io/go-utils/sliceutil"
 	"github.com/kballard/go-shellquote"
 )
 
 // Input ...
 type Input struct {
 	ProjectLocation string `env:"project_location,dir"`
-	APKPathPattern  string `env:"apk_path_pattern"`
 	AppPathPattern  string `env:"app_path_pattern,required"`
 	Variant         string `env:"variant"`
 	Module          string `env:"module"`
@@ -34,14 +34,12 @@ type Input struct {
 type Config struct {
 	ProjectLocation string
 
-	APKPathPattern string
-	AppPathPattern string
-
 	Variant string
 	Module  string
 
-	AppType   AppType
-	Arguments string
+	AppPathPattern string
+	AppType        AppType
+	Arguments      string
 
 	CacheLevel cache.Level
 	DeployDir  string
@@ -72,7 +70,6 @@ const (
 type Result struct {
 	appArtifacts []gradle.Artifact
 	mappings     []gradle.Artifact
-	appPatterns  []string // TODO: temporary
 }
 
 type InputParser interface {
@@ -110,7 +107,6 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 	stepconf.Print(input)
 	return Config{
 		ProjectLocation: input.ProjectLocation,
-		APKPathPattern:  input.APKPathPattern,
 		AppPathPattern:  input.AppPathPattern,
 		Variant:         input.Variant,
 		Module:          input.Module,
@@ -119,26 +115,6 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 		CacheLevel:      cache.Level(input.CacheLevel),
 		DeployDir:       input.DeployDir,
 	}, nil
-}
-
-func executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Variants) error {
-	args, err := shellquote.Split(cfg.Arguments)
-	if err != nil {
-		return fmt.Errorf("failed to parse arguments: %s", err)
-	}
-
-	log.Infof("Run build:")
-	buildCommand := buildTask.GetCommand(variants, args...)
-
-	fmt.Println()
-	log.Donef("$ " + buildCommand.PrintableCommandArgs())
-	fmt.Println()
-
-	if err := buildCommand.Run(); err != nil {
-		return fmt.Errorf("build task failed: %v", err)
-	}
-
-	return nil
 }
 
 func (a AndroidBuild) Run(cfg Config) (Result, error) {
@@ -164,20 +140,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 		return Result{}, fmt.Errorf("failed to find buildable variants: %s", err)
 	}
 
-	fmt.Println()
-	log.Infof("Variants:")
-
-	for module, variants := range variants {
-		log.Printf("%s:", module)
-		for _, variant := range variants {
-			if sliceutil.IsStringInSlice(variant, filteredVariants[module]) {
-				log.Donef("✓ %s", variant)
-				continue
-			}
-			log.Printf("- %s", variant)
-		}
-	}
-	fmt.Println()
+	printVariants(variants, filteredVariants)
 
 	started := time.Now()
 
@@ -188,26 +151,8 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	fmt.Println()
 	log.Infof("Export Artifacts:")
 
-	//
-	// Config migration from apk_path_pattern to app_path_pattern
-	// The apk_path_pattern is deprecated
-	// New input: app_path_pattern
-	// If the apk_path_pattern is used log a warning, and still use the deprecated apk_path_pattern and ignore the new app_path_pattern temporarily
-	var appPatterns []string
-	if strings.TrimSpace(cfg.APKPathPattern) != "" {
-		log.Warnf(`Step input 'APK location pattern' (apk_path_pattern) is deprecated and will be removed on 20 August 2019,
-use 'App artifact (.apk, .aab) location pattern' (app_path_pattern) instead.`)
-		fmt.Println()
-		log.Infof(`'APK location pattern' (apk_path_pattern) is used, 'App artifact (.apk, .aab) location pattern' (app_path_pattern) is ignored.
-Use 'App artifact (.apk, .aab) location pattern' and set 'APK location pattern' to empty value.`)
-		fmt.Println()
-
-		appPatterns = strings.Split(cfg.APKPathPattern, "\n")
-	} else {
-		appPatterns = strings.Split(cfg.AppPathPattern, "\n")
-	}
-
-	appArtifacts, err := getArtifacts(gradleProject, started, appPatterns, false)
+	var appPathPatterns = strings.Split(cfg.AppPathPattern, "\n")
+	appArtifacts, err := getArtifacts(gradleProject, started, appPathPatterns, false)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to find app artifacts: %v", err)
 	}
@@ -217,26 +162,15 @@ Use 'App artifact (.apk, .aab) location pattern' and set 'APK location pattern' 
 		return Result{}, fmt.Errorf("failed to find mapping files, error: %v", err)
 	}
 
+	printAppSearchInfo(appArtifacts, appPathPatterns)
+
 	return Result{
 		appArtifacts: appArtifacts,
 		mappings:     mappings,
-		appPatterns:  appPatterns,
 	}, nil
 }
 
 func (a AndroidBuild) Export(result Result, cfg Config) error {
-	var artPaths []string
-	for _, a := range result.appArtifacts {
-		artPaths = append(artPaths, a.Name)
-	}
-
-	log.Donef("Used patterns for generated artifact search:")
-	log.Printf(strings.Join(result.appPatterns, "\n"))
-	fmt.Println()
-	log.Donef("Found app artifacts:")
-	log.Printf(strings.Join(artPaths, "\n"))
-	fmt.Println()
-
 	log.Donef("Exporting artifacts with the selected (%s) app type", cfg.AppType)
 	// Filter appArtifacts by build type
 	var filteredArtifacts []gradle.Artifact
@@ -247,7 +181,7 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 	}
 
 	if len(filteredArtifacts) == 0 {
-		log.Warnf("No app artifacts found with patterns: %s", strings.Join(result.appPatterns, ", "))
+		log.Warnf("No app artifacts found with patterns:\n%s", cfg.AppPathPattern)
 		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change AppPathPattern accordingly.")
 		return nil
 	}
@@ -351,6 +285,57 @@ func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []st
 		log.Warnf("No appArtifacts found with pattern: %s without modtime check", strings.Join(patterns, ", "))
 	}
 	return
+}
+
+func executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Variants) error {
+	args, err := shellquote.Split(cfg.Arguments)
+	if err != nil {
+		return fmt.Errorf("failed to parse arguments: %s", err)
+	}
+
+	log.Infof("Run build:")
+	buildCommand := buildTask.GetCommand(variants, args...)
+
+	fmt.Println()
+	log.Donef("$ " + buildCommand.PrintableCommandArgs())
+	fmt.Println()
+
+	if err := buildCommand.Run(); err != nil {
+		return fmt.Errorf("build task failed: %v", err)
+	}
+
+	return nil
+}
+
+func printVariants(variants, filteredVariants gradle.Variants) {
+	fmt.Println()
+	log.Infof("Variants:")
+
+	for module, variants := range variants {
+		log.Printf("%s:", module)
+		for _, variant := range variants {
+			if sliceutil.IsStringInSlice(variant, filteredVariants[module]) {
+				log.Donef("✓ %s", variant)
+				continue
+			}
+			log.Printf("- %s", variant)
+		}
+	}
+	fmt.Println()
+}
+
+func printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
+	var artPaths []string
+	for _, a := range appArtifacts {
+		artPaths = append(artPaths, a.Name)
+	}
+
+	log.Donef("Used patterns for generated artifact search:")
+	log.Printf(strings.Join(appPathPatterns, "\n"))
+	fmt.Println()
+	log.Donef("Found app artifacts:")
+	log.Printf(strings.Join(artPaths, "\n"))
+	fmt.Println()
 }
 
 func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
