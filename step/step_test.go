@@ -3,9 +3,8 @@ package step
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/bitrise-io/go-android/gradle"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilterVariants(t *testing.T) {

@@ -3,14 +3,13 @@ package main
 import (
 	"os"
 
-	"github.com/bitrise-steplib/bitrise-step-android-build/step"
-
 	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-steplib/bitrise-step-android-build/step"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Errorf("Step run failed: %s", err.Error())
+		log.Errorf("Step run failed: %s", err)
 		os.Exit(1)
 	}
 }

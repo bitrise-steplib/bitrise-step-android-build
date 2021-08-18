@@ -7,15 +7,13 @@ import (
 	"time"
 
 	androidcache "github.com/bitrise-io/go-android/cache"
-
-	"github.com/bitrise-io/go-utils/sliceutil"
-
 	"github.com/bitrise-io/go-android/gradle"
 	"github.com/bitrise-io/go-steputils/cache"
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-steputils/tools"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-io/go-utils/sliceutil"
 	"github.com/kballard/go-shellquote"
 )
 
@@ -69,8 +67,8 @@ const (
 )
 
 type Result struct {
-	appArtifacts []gradle.Artifact
-	mappings     []gradle.Artifact
+	appFiles     []gradle.Artifact
+	mappingFiles []gradle.Artifact
 }
 
 type InputParser interface {
@@ -166,16 +164,16 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	printAppSearchInfo(appArtifacts, appPathPatterns)
 
 	return Result{
-		appArtifacts: appArtifacts,
-		mappings:     mappings,
+		appFiles:     appArtifacts,
+		mappingFiles: mappings,
 	}, nil
 }
 
 func (a AndroidBuild) Export(result Result, cfg Config) error {
 	log.Donef("Exporting artifacts with the selected (%s) app type", cfg.AppType)
-	// Filter appArtifacts by build type
+	// Filter appFiles by build type
 	var filteredArtifacts []gradle.Artifact
-	for _, a := range result.appArtifacts {
+	for _, a := range result.appFiles {
 		if filepath.Ext(a.Path) == fmt.Sprintf(".%s", cfg.AppType) {
 			filteredArtifacts = append(filteredArtifacts, a)
 		}
@@ -234,13 +232,13 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 	log.Infof("Export mapping files:")
 	fmt.Println()
 
-	if len(result.mappings) == 0 {
+	if len(result.mappingFiles) == 0 {
 		log.Printf("No mapping files found with pattern: %s", mappingFilePattern)
 		log.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
 		return nil
 	}
 
-	exportedArtifactPaths, err = exportArtifacts(result.mappings, cfg.DeployDir)
+	exportedArtifactPaths, err = exportArtifacts(result.mappingFiles, cfg.DeployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
@@ -280,12 +278,12 @@ func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []st
 
 	if len(artifacts) == 0 {
 		if !started.IsZero() {
-			log.Warnf("No appArtifacts found with patterns: %s that has modification time after: %s", strings.Join(patterns, ", "), started)
+			log.Warnf("No app files found with patterns: %s that has modification time after: %s", strings.Join(patterns, ", "), started)
 			log.Warnf("Retrying without modtime check....")
 			fmt.Println()
 			return getArtifacts(gradleProject, time.Time{}, patterns, includeModule)
 		}
-		log.Warnf("No appArtifacts found with pattern: %s without modtime check", strings.Join(patterns, ", "))
+		log.Warnf("No app files found with pattern: %s without modtime check", strings.Join(patterns, ", "))
 	}
 	return
 }
