@@ -68,7 +68,13 @@ const (
 
 type Result struct {
 	appFiles     []gradle.Artifact
+	appType      AppType
 	mappingFiles []gradle.Artifact
+}
+
+type ExportConfig struct {
+	DeployDir      string
+	AppPathPattern string
 }
 
 type InputParser interface {
@@ -165,27 +171,28 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 
 	return Result{
 		appFiles:     appArtifacts,
+		appType:      cfg.AppType,
 		mappingFiles: mappings,
 	}, nil
 }
 
-func (a AndroidBuild) Export(result Result, cfg Config) error {
-	log.Donef("Exporting artifacts with the selected (%s) app type", cfg.AppType)
+func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
+	log.Donef("Exporting artifacts with the selected (%s) app type", result.appType)
 	// Filter appFiles by build type
 	var filteredArtifacts []gradle.Artifact
 	for _, a := range result.appFiles {
-		if filepath.Ext(a.Path) == fmt.Sprintf(".%s", cfg.AppType) {
+		if filepath.Ext(a.Path) == fmt.Sprintf(".%s", result.appType) {
 			filteredArtifacts = append(filteredArtifacts, a)
 		}
 	}
 
 	if len(filteredArtifacts) == 0 {
-		log.Warnf("No app artifacts found with patterns:\n%s", cfg.AppPathPattern)
-		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change AppPathPattern accordingly.")
+		log.Warnf("No app artifacts found with patterns:\n%s", exportCfg.AppPathPattern)
+		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change app_path_pattern accordingly.")
 		return nil
 	}
 
-	exportedArtifactPaths, err := exportArtifacts(filteredArtifacts, cfg.DeployDir)
+	exportedArtifactPaths, err := exportArtifacts(filteredArtifacts, exportCfg.DeployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
@@ -200,7 +207,7 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 
 	// Use the correct env key for the selected build type
 	var envKey string
-	if cfg.AppType == AppTypeAPK {
+	if result.appType == AppTypeAPK {
 		envKey = apkEnvKey
 	} else {
 		envKey = aabEnvKey
@@ -217,7 +224,7 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 	}
 
 	// Use the correct env key for the selected build type
-	if cfg.AppType == AppTypeAPK {
+	if result.appType == AppTypeAPK {
 		envKey = apkListEnvKey
 	} else {
 		envKey = aabListEnvKey
@@ -238,7 +245,7 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 		return nil
 	}
 
-	exportedArtifactPaths, err = exportArtifacts(result.mappingFiles, cfg.DeployDir)
+	exportedArtifactPaths, err = exportArtifacts(result.mappingFiles, exportCfg.DeployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
