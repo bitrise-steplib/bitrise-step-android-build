@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	androidcache "github.com/bitrise-io/go-android/cache"
+
 	"github.com/bitrise-io/go-utils/sliceutil"
 
-	androidcache "github.com/bitrise-io/go-android/cache"
 	"github.com/bitrise-io/go-android/gradle"
 	"github.com/bitrise-io/go-steputils/cache"
 	"github.com/bitrise-io/go-steputils/stepconf"
@@ -236,7 +237,7 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 	if len(result.mappings) == 0 {
 		log.Printf("No mapping files found with pattern: %s", mappingFilePattern)
 		log.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
-		return nil // TODO
+		return nil
 	}
 
 	exportedArtifactPaths, err = exportArtifacts(result.mappings, cfg.DeployDir)
@@ -256,13 +257,15 @@ func (a AndroidBuild) Export(result Result, cfg Config) error {
 	}
 	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
+	return nil
+}
+
+func (a AndroidBuild) CollectCache(cfg Config) {
 	fmt.Println()
 	log.Infof("Collecting cache:")
 	if warning := androidcache.Collect(cfg.ProjectLocation, cfg.CacheLevel); warning != nil {
 		log.Warnf("%s", warning)
 	}
-
-	return nil
 }
 
 func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {

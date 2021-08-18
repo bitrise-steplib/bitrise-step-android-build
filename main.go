@@ -31,6 +31,8 @@ func run() error {
 		return err
 	}
 
+	androidBuild.CollectCache(config)
+
 	return nil
 }
 
