@@ -74,12 +74,6 @@ type Result struct {
 	mappingFiles []gradle.Artifact
 }
 
-// ExportConfig ...
-type ExportConfig struct {
-	DeployDir      string
-	AppPathPattern string
-}
-
 // InputParser ...
 type InputParser interface {
 	Parse() (Input, error)
@@ -208,8 +202,8 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 }
 
 // Export ...
-func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
-	exportedArtifactPaths, err := a.exportArtifacts(result.appFiles, exportCfg.DeployDir)
+func (a AndroidBuild) Export(result Result, deployDir string) error {
+	exportedArtifactPaths, err := a.exportArtifacts(result.appFiles, deployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
@@ -261,7 +255,7 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 		return nil
 	}
 
-	exportedArtifactPaths, err = a.exportArtifacts(result.mappingFiles, exportCfg.DeployDir)
+	exportedArtifactPaths, err = a.exportArtifacts(result.mappingFiles, deployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}

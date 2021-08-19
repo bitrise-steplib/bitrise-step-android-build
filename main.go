@@ -29,11 +29,7 @@ func run() error {
 		return err
 	}
 
-	exportConfig := step.ExportConfig{
-		DeployDir:      config.DeployDir,
-		AppPathPattern: config.AppPathPattern,
-	}
-	if err := androidBuild.Export(result, exportConfig); err != nil {
+	if err := androidBuild.Export(result, config.DeployDir); err != nil {
 		return err
 	}
 
