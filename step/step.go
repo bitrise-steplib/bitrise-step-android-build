@@ -38,18 +38,18 @@ type Config struct {
 	Module  string
 
 	AppPathPattern string
-	AppType        AppType
+	AppType        appType
 	Arguments      string
 
 	CacheLevel cache.Level
 	DeployDir  string
 }
 
-type AppType string
+type appType string
 
 const (
-	AppTypeAPK = AppType("apk")
-	AppTypeAAB = AppType("aab")
+	appTypeAPK = appType("apk")
+	appTypeAAB = appType("aab")
 )
 
 var (
@@ -67,27 +67,32 @@ const (
 	mappingFilePattern = "*build/*/mapping.txt"
 )
 
+// Result ...
 type Result struct {
 	appFiles     []gradle.Artifact
-	appType      AppType
+	appType      appType
 	mappingFiles []gradle.Artifact
 }
 
+// ExportConfig ...
 type ExportConfig struct {
 	DeployDir      string
 	AppPathPattern string
 }
 
+// InputParser ...
 type InputParser interface {
 	Parse() (Input, error)
 }
 
 type envInputParser struct{}
 
+// GradleProjectWrapper ...
 type GradleProjectWrapper interface {
 	FindArtifacts(generatedAfter time.Time, pattern string, includeModuleInName bool) ([]gradle.Artifact, error)
 }
 
+// NewInputParser ...
 func NewInputParser() InputParser {
 	return envInputParser{}
 }
@@ -100,6 +105,7 @@ func (envInputParser) Parse() (Input, error) {
 	return i, nil
 }
 
+// AndroidBuild ...
 type AndroidBuild struct {
 	stepInputParser InputParser
 	logger          log.Logger
@@ -107,10 +113,13 @@ type AndroidBuild struct {
 }
 
 // TODO: bloat
+
+// NewAndroidBuild ...
 func NewAndroidBuild(stepInputParser InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
 	return &AndroidBuild{stepInputParser: stepInputParser, logger: logger, cmdFactory: cmdFactory}
 }
 
+// ProcessConfig ...
 func (a AndroidBuild) ProcessConfig() (Config, error) {
 	input, err := a.stepInputParser.Parse()
 	if err != nil {
@@ -122,13 +131,14 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 		AppPathPattern:  input.AppPathPattern,
 		Variant:         input.Variant,
 		Module:          input.Module,
-		AppType:         AppType(input.BuildType),
+		AppType:         appType(input.BuildType),
 		Arguments:       input.Arguments,
 		CacheLevel:      cache.Level(input.CacheLevel),
 		DeployDir:       input.DeployDir,
 	}, nil
 }
 
+// Run ...
 func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	gradleProject, err := gradle.NewProject(cfg.ProjectLocation, a.cmdFactory)
 	if err != nil {
@@ -136,7 +146,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	}
 
 	var buildTask *gradle.Task
-	if cfg.AppType == AppTypeAPK {
+	if cfg.AppType == appTypeAPK {
 		buildTask = gradleProject.GetTask("assemble")
 	} else {
 		buildTask = gradleProject.GetTask("bundle")
@@ -197,6 +207,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	}, nil
 }
 
+// Export ...
 func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	exportedArtifactPaths, err := a.exportArtifacts(result.appFiles, exportCfg.DeployDir)
 	if err != nil {
@@ -211,7 +222,7 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 
 	// Use the correct env key for the selected build type
 	var envKey string
-	if result.appType == AppTypeAPK {
+	if result.appType == appTypeAPK {
 		envKey = apkEnvKey
 	} else {
 		envKey = aabEnvKey
@@ -229,7 +240,7 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	}
 
 	// Use the correct env key for the selected build type
-	if result.appType == AppTypeAPK {
+	if result.appType == appTypeAPK {
 		envKey = apkListEnvKey
 	} else {
 		envKey = aabListEnvKey
@@ -270,6 +281,7 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	return nil
 }
 
+// CollectCache ...
 func (a AndroidBuild) CollectCache(cfg Config) {
 	a.logger.Println()
 	a.logger.Infof("Collecting cache:")
