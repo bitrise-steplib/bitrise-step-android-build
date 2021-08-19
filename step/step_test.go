@@ -2,8 +2,11 @@ package step
 
 import (
 	"testing"
+	"time"
 
 	"github.com/bitrise-io/go-android/gradle"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -191,4 +194,55 @@ func TestVariantSeparation(t *testing.T) {
 		// Then
 		require.Equal(t, testCase.want, variants)
 	}
+}
+
+func Test_GivenMatchingFiles_WhenGettingArtifacts_ThenArtifactsReturned(t *testing.T) {
+	// Given
+	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
+	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
+	gradleWrapper := new(MockGradleProjectWrapper)
+	testArtifacts := []gradle.Artifact{
+		{
+			Path: "/bitrise/src/app/build/outputs/apk/my-app-debug.apk",
+			Name: "my-app-debug.apk",
+		},
+	}
+	gradleWrapper.On("FindArtifacts", startTime, appPathPattern[0], false).Return(testArtifacts, nil)
+	gradleWrapper.On("FindArtifacts", startTime, appPathPattern[1], false).Return([]gradle.Artifact{}, nil)
+
+	// When
+	artifacts, err := getArtifacts(gradleWrapper, startTime, appPathPattern, false)
+
+	// Then
+	assert.NoError(t, err)
+	assert.Equal(t, testArtifacts, artifacts)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[0], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[1], false)
+}
+
+func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck(t *testing.T) {
+	// Given
+	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
+	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
+	gradleWrapper := new(MockGradleProjectWrapper)
+	testArtifacts := []gradle.Artifact{
+		{
+			Path: "/bitrise/src/app/build/outputs/apk/my-app-debug.apk",
+			Name: "my-app-debug.apk",
+		},
+	}
+	gradleWrapper.On("FindArtifacts", startTime, mock.Anything, false).Return([]gradle.Artifact{}, nil)
+	gradleWrapper.On("FindArtifacts", time.Time{}, appPathPattern[0], false).Return(testArtifacts, nil)
+	gradleWrapper.On("FindArtifacts", time.Time{}, appPathPattern[1], false).Return([]gradle.Artifact{}, nil)
+
+	// When
+	artifacts, err := getArtifacts(gradleWrapper, startTime, appPathPattern, false)
+
+	// Then
+	assert.NoError(t, err)
+	assert.Equal(t, testArtifacts, artifacts)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[0], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[1], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", time.Time{}, appPathPattern[0], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", time.Time{}, appPathPattern[1], false)
 }

@@ -83,6 +83,10 @@ type InputParser interface {
 
 type envInputParser struct{}
 
+type GradleProjectWrapper interface {
+	FindArtifacts(generatedAfter time.Time, pattern string, includeModuleInName bool) ([]gradle.Artifact, error)
+}
+
 func NewInputParser() InputParser {
 	return envInputParser{}
 }
@@ -271,7 +275,7 @@ func (a AndroidBuild) CollectCache(cfg Config) {
 	}
 }
 
-func getArtifacts(gradleProject gradle.Project, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
+func getArtifacts(gradleProject GradleProjectWrapper, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
 	for _, pattern := range patterns {
 		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
 		if err != nil {
