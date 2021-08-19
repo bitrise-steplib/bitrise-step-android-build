@@ -1,16 +1,17 @@
-# github.com/bitrise-io/go-android v0.0.0-20210527143215-3ad22ad02e2e
+# github.com/bitrise-io/go-android v0.0.0-20210819130738-5a93829117ac
 ## explicit
 github.com/bitrise-io/go-android/cache
 github.com/bitrise-io/go-android/gradle
-# github.com/bitrise-io/go-steputils v0.0.0-20210514150206-5b6261447e77
+# github.com/bitrise-io/go-steputils v0.0.0-20210819125716-a25c85ed362e
 ## explicit
 github.com/bitrise-io/go-steputils/cache
 github.com/bitrise-io/go-steputils/stepconf
 github.com/bitrise-io/go-steputils/tools
-# github.com/bitrise-io/go-utils v0.0.0-20210520073355-367fa34178f5
+# github.com/bitrise-io/go-utils v0.0.0-20210819105546-07a5bda18d68
 ## explicit
 github.com/bitrise-io/go-utils/colorstring
 github.com/bitrise-io/go-utils/command
+github.com/bitrise-io/go-utils/env
 github.com/bitrise-io/go-utils/errorutil
 github.com/bitrise-io/go-utils/fileutil
 github.com/bitrise-io/go-utils/log

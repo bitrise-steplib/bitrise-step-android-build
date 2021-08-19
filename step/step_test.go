@@ -5,6 +5,9 @@ import (
 	"time"
 
 	"github.com/bitrise-io/go-android/gradle"
+	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/env"
+	"github.com/bitrise-io/go-utils/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -198,6 +201,7 @@ func TestVariantSeparation(t *testing.T) {
 
 func Test_GivenMatchingFiles_WhenGettingArtifacts_ThenArtifactsReturned(t *testing.T) {
 	// Given
+	step := createStep()
 	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
 	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
 	gradleWrapper := new(MockGradleProjectWrapper)
@@ -211,7 +215,7 @@ func Test_GivenMatchingFiles_WhenGettingArtifacts_ThenArtifactsReturned(t *testi
 	gradleWrapper.On("FindArtifacts", startTime, appPathPattern[1], false).Return([]gradle.Artifact{}, nil)
 
 	// When
-	artifacts, err := getArtifacts(gradleWrapper, startTime, appPathPattern, false)
+	artifacts, err := step.getArtifacts(gradleWrapper, startTime, appPathPattern, false)
 
 	// Then
 	assert.NoError(t, err)
@@ -222,6 +226,7 @@ func Test_GivenMatchingFiles_WhenGettingArtifacts_ThenArtifactsReturned(t *testi
 
 func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck(t *testing.T) {
 	// Given
+	step := createStep()
 	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
 	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
 	gradleWrapper := new(MockGradleProjectWrapper)
@@ -236,7 +241,7 @@ func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck
 	gradleWrapper.On("FindArtifacts", time.Time{}, appPathPattern[1], false).Return([]gradle.Artifact{}, nil)
 
 	// When
-	artifacts, err := getArtifacts(gradleWrapper, startTime, appPathPattern, false)
+	artifacts, err := step.getArtifacts(gradleWrapper, startTime, appPathPattern, false)
 
 	// Then
 	assert.NoError(t, err)
@@ -245,4 +250,12 @@ func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck
 	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[1], false)
 	gradleWrapper.AssertCalled(t, "FindArtifacts", time.Time{}, appPathPattern[0], false)
 	gradleWrapper.AssertCalled(t, "FindArtifacts", time.Time{}, appPathPattern[1], false)
+}
+
+func createStep() AndroidBuild {
+	return AndroidBuild{
+		stepInputParser: NewInputParser(),
+		logger:          log.NewLogger(true),
+		cmdFactory:      command.NewFactory(env.NewRepository()),
+	}
 }

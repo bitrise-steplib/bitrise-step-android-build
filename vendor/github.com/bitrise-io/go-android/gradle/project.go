@@ -2,6 +2,7 @@ package gradle
 
 import (
 	"fmt"
+	"github.com/bitrise-io/go-utils/command"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,12 +16,13 @@ import (
 
 // Project ...
 type Project struct {
-	location string
-	monoRepo bool
+	location   string
+	monoRepo   bool
+	cmdFactory command.Factory
 }
 
 // NewProject ...
-func NewProject(location string) (Project, error) {
+func NewProject(location string, cmdFactory command.Factory) (Project, error) {
 	var err error
 	location, err = filepath.Abs(location)
 	if err != nil {
@@ -42,7 +44,7 @@ func NewProject(location string) (Project, error) {
 	}
 
 	if location == "/" {
-		return Project{location: location, monoRepo: false}, nil
+		return Project{location: location, monoRepo: false, cmdFactory: cmdFactory}, nil
 	}
 
 	root := filepath.Join(location, "..")
@@ -65,7 +67,7 @@ func NewProject(location string) (Project, error) {
 		}
 	}
 
-	return Project{location: location, monoRepo: (projectsCount > 1)}, nil
+	return Project{location: location, monoRepo: projectsCount > 1, cmdFactory: cmdFactory}, nil
 }
 
 // GetTask ...

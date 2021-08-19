@@ -1,15 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/env"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-steplib/bitrise-step-android-build/step"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Errorf("Step run failed: %s", err)
+		fmt.Printf("Step run failed: %s\n", err)
 		os.Exit(1)
 	}
 }
@@ -41,5 +44,7 @@ func run() error {
 
 func createAndroidBuild() *step.AndroidBuild {
 	stepInputParser := step.NewInputParser()
-	return step.NewAndroidBuild(stepInputParser)
+	logger := log.NewLogger(false)
+	cmdFactory := command.NewFactory(env.NewRepository())
+	return step.NewAndroidBuild(stepInputParser, logger, cmdFactory)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/bitrise-io/go-steputils/cache"
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-steputils/tools"
+	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/sliceutil"
@@ -101,17 +102,19 @@ func (envInputParser) Parse() (Input, error) {
 
 type AndroidBuild struct {
 	stepInputParser InputParser
+	logger          log.Logger
+	cmdFactory      command.Factory
 }
 
 // TODO: bloat
-func NewAndroidBuild(stepInputParser InputParser) *AndroidBuild {
-	return &AndroidBuild{stepInputParser: stepInputParser}
+func NewAndroidBuild(stepInputParser InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
+	return &AndroidBuild{stepInputParser: stepInputParser, logger: logger, cmdFactory: cmdFactory}
 }
 
 func (a AndroidBuild) ProcessConfig() (Config, error) {
 	input, err := a.stepInputParser.Parse()
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
 	}
 	stepconf.Print(input)
 	return Config{
@@ -127,7 +130,7 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 }
 
 func (a AndroidBuild) Run(cfg Config) (Result, error) {
-	gradleProject, err := gradle.NewProject(cfg.ProjectLocation)
+	gradleProject, err := gradle.NewProject(cfg.ProjectLocation, a.cmdFactory)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to open Gradle project: %s", err)
 	}
@@ -149,31 +152,31 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 		return Result{}, fmt.Errorf("failed to find buildable variants: %s", err)
 	}
 
-	printVariants(variants, filteredVariants)
+	a.printVariants(variants, filteredVariants)
 
 	started := time.Now()
 
-	if err := executeGradleBuild(cfg, buildTask, filteredVariants); err != nil {
+	if err := a.executeGradleBuild(cfg, buildTask, filteredVariants); err != nil {
 		return Result{}, err
 	}
 
-	fmt.Println()
-	log.Infof("Export Artifacts:")
+	a.logger.Println()
+	a.logger.Infof("Export Artifacts:")
 
 	var appPathPatterns = strings.Split(cfg.AppPathPattern, "\n")
-	appArtifacts, err := getArtifacts(gradleProject, started, appPathPatterns, false)
+	appArtifacts, err := a.getArtifacts(gradleProject, started, appPathPatterns, false)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to find app artifacts: %v", err)
 	}
 
-	mappings, err := getArtifacts(gradleProject, started, []string{mappingFilePattern}, true)
+	mappings, err := a.getArtifacts(gradleProject, started, []string{mappingFilePattern}, true)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to find mapping files, error: %v", err)
 	}
 
-	printAppSearchInfo(appArtifacts, appPathPatterns)
+	a.printAppSearchInfo(appArtifacts, appPathPatterns)
 
-	log.Donef("Exporting artifacts with the selected app type: %s", cfg.AppType)
+	a.logger.Donef("Exporting artifacts with the selected app type: %s", cfg.AppType)
 	// Filter appFiles by build type
 	var filteredArtifacts []gradle.Artifact
 	for _, a := range appArtifacts {
@@ -183,8 +186,8 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	}
 
 	if len(filteredArtifacts) == 0 {
-		log.Warnf("No app artifacts found with patterns:\n%s", cfg.AppPathPattern)
-		log.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change app_path_pattern accordingly.")
+		a.logger.Warnf("No app artifacts found with patterns:\n%s", cfg.AppPathPattern)
+		a.logger.Warnf("If you have changed default APK, AAB export path in your gradle files then you might need to change app_path_pattern accordingly.")
 	}
 
 	return Result{
@@ -195,7 +198,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 }
 
 func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
-	exportedArtifactPaths, err := exportArtifacts(result.appFiles, exportCfg.DeployDir)
+	exportedArtifactPaths, err := a.exportArtifacts(result.appFiles, exportCfg.DeployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
@@ -216,8 +219,8 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	if err := tools.ExportEnvironmentWithEnvman(envKey, lastExportedArtifact); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", envKey)
 	}
-	fmt.Println()
-	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
+	a.logger.Println()
+	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
 
 	var paths, sep string
 	for _, path := range exportedArtifactPaths {
@@ -234,20 +237,20 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 	if err := tools.ExportEnvironmentWithEnvman(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", envKey)
 	}
-	log.Printf("  Env    [ $%s = %s ]", envKey, paths)
+	a.logger.Printf("  Env    [ $%s = %s ]", envKey, paths)
 
-	fmt.Println()
+	a.logger.Println()
 
-	log.Infof("Export mapping files:")
-	fmt.Println()
+	a.logger.Infof("Export mapping files:")
+	a.logger.Println()
 
 	if len(result.mappingFiles) == 0 {
-		log.Printf("No mapping files found with pattern: %s", mappingFilePattern)
-		log.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
+		a.logger.Printf("No mapping files found with pattern: %s", mappingFilePattern)
+		a.logger.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
 		return nil
 	}
 
-	exportedArtifactPaths, err = exportArtifacts(result.mappingFiles, exportCfg.DeployDir)
+	exportedArtifactPaths, err = a.exportArtifacts(result.mappingFiles, exportCfg.DeployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
@@ -258,28 +261,29 @@ func (a AndroidBuild) Export(result Result, exportCfg ExportConfig) error {
 
 	lastExportedArtifact = exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
-	fmt.Println()
+	a.logger.Println()
 	if err := tools.ExportEnvironmentWithEnvman(mappingFileEnvKey, lastExportedArtifact); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", mappingFileEnvKey)
 	}
-	log.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
+	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
 	return nil
 }
 
 func (a AndroidBuild) CollectCache(cfg Config) {
-	fmt.Println()
-	log.Infof("Collecting cache:")
-	if warning := androidcache.Collect(cfg.ProjectLocation, cfg.CacheLevel); warning != nil {
-		log.Warnf("%s", warning)
+	a.logger.Println()
+	a.logger.Infof("Collecting cache:")
+	if warning := androidcache.Collect(cfg.ProjectLocation, cfg.CacheLevel, a.cmdFactory); warning != nil {
+		a.logger.Warnf("%s", warning)
 	}
+	a.logger.Donef("Done")
 }
 
-func getArtifacts(gradleProject GradleProjectWrapper, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
+func (a AndroidBuild) getArtifacts(gradleProject GradleProjectWrapper, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
 	for _, pattern := range patterns {
 		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
 		if err != nil {
-			log.Warnf("Failed to find artifact with pattern ( %s ), error: %s", pattern, err)
+			a.logger.Warnf("Failed to find artifact with pattern ( %s ), error: %s", pattern, err)
 			continue
 		}
 		artifacts = append(artifacts, afs...)
@@ -287,28 +291,28 @@ func getArtifacts(gradleProject GradleProjectWrapper, started time.Time, pattern
 
 	if len(artifacts) == 0 {
 		if !started.IsZero() {
-			log.Warnf("No app files found with patterns: %s that has modification time after: %s", strings.Join(patterns, ", "), started)
-			log.Warnf("Retrying without modtime check....")
-			fmt.Println()
-			return getArtifacts(gradleProject, time.Time{}, patterns, includeModule)
+			a.logger.Warnf("No app files found with patterns: %s that has modification time after: %s", strings.Join(patterns, ", "), started)
+			a.logger.Warnf("Retrying without modtime check....")
+			a.logger.Println()
+			return a.getArtifacts(gradleProject, time.Time{}, patterns, includeModule)
 		}
-		log.Warnf("No app files found with pattern: %s without modtime check", strings.Join(patterns, ", "))
+		a.logger.Warnf("No app files found with pattern: %s without modtime check", strings.Join(patterns, ", "))
 	}
 	return
 }
 
-func executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Variants) error {
+func (a AndroidBuild) executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Variants) error {
 	args, err := shellquote.Split(cfg.Arguments)
 	if err != nil {
 		return fmt.Errorf("failed to parse arguments: %s", err)
 	}
 
-	log.Infof("Run build:")
+	a.logger.Infof("Run build:")
 	buildCommand := buildTask.GetCommand(variants, args...)
 
-	fmt.Println()
-	log.Donef("$ " + buildCommand.PrintableCommandArgs())
-	fmt.Println()
+	a.logger.Println()
+	a.logger.Donef("$ " + buildCommand.PrintableCommandArgs())
+	a.logger.Println()
 
 	if err := buildCommand.Run(); err != nil {
 		return fmt.Errorf("build task failed: %v", err)
@@ -317,35 +321,35 @@ func executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Vari
 	return nil
 }
 
-func printVariants(variants, filteredVariants gradle.Variants) {
-	fmt.Println()
-	log.Infof("Variants:")
+func (a AndroidBuild) printVariants(variants, filteredVariants gradle.Variants) {
+	a.logger.Println()
+	a.logger.Infof("Variants:")
 
 	for module, variants := range variants {
-		log.Printf("%s:", module)
+		a.logger.Printf("%s:", module)
 		for _, variant := range variants {
 			if sliceutil.IsStringInSlice(variant, filteredVariants[module]) {
-				log.Donef("✓ %s", variant)
+				a.logger.Donef("✓ %s", variant)
 				continue
 			}
-			log.Printf("- %s", variant)
+			a.logger.Printf("- %s", variant)
 		}
 	}
-	fmt.Println()
+	a.logger.Println()
 }
 
-func printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
+func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
 	var artPaths []string
 	for _, a := range appArtifacts {
 		artPaths = append(artPaths, a.Name)
 	}
 
-	log.Donef("Used patterns for generated artifact search:")
-	log.Printf(strings.Join(appPathPatterns, "\n"))
-	fmt.Println()
-	log.Donef("Found app artifacts:")
-	log.Printf(strings.Join(artPaths, "\n"))
-	fmt.Println()
+	a.logger.Donef("Used patterns for generated artifact search:")
+	a.logger.Printf(strings.Join(appPathPatterns, "\n"))
+	a.logger.Println()
+	a.logger.Donef("Found app artifacts:")
+	a.logger.Printf(strings.Join(artPaths, "\n"))
+	a.logger.Println()
 }
 
 func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
@@ -409,7 +413,7 @@ func filterNonUtilityVariants(variants []string) []string {
 	return filteredVariants
 }
 
-func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
+func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
 	var paths []string
 	for _, artifact := range artifacts {
 		exists, err := pathutil.IsPathExists(filepath.Join(deployDir, artifact.Name))
@@ -426,10 +430,10 @@ func exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, e
 			artifact.Name = fmt.Sprintf("%s-%s%s", name, timestamp, ext)
 		}
 
-		log.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, artifact.Name)
+		a.logger.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, artifact.Name)
 
 		if err := artifact.Export(deployDir); err != nil {
-			log.Warnf("failed to export artifact (%s), error: %v", artifact.Path, err)
+			a.logger.Warnf("failed to export artifact (%s), error: %v", artifact.Path, err)
 			continue
 		}
 
