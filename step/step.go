@@ -106,8 +106,6 @@ type AndroidBuild struct {
 	cmdFactory      command.Factory
 }
 
-// TODO: bloat
-
 // NewAndroidBuild ...
 func NewAndroidBuild(stepInputParser InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
 	return &AndroidBuild{stepInputParser: stepInputParser, logger: logger, cmdFactory: cmdFactory}
