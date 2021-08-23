@@ -45,33 +45,18 @@ type Config struct {
 	DeployDir  string
 }
 
-type appType string
-
-const (
-	appTypeAPK = appType("apk")
-	appTypeAAB = appType("aab")
-)
-
-var (
-	ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
-)
-
-const (
-	apkEnvKey     = "BITRISE_APK_PATH"
-	apkListEnvKey = "BITRISE_APK_PATH_LIST"
-
-	aabEnvKey     = "BITRISE_AAB_PATH"
-	aabListEnvKey = "BITRISE_AAB_PATH_LIST"
-
-	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
-	mappingFilePattern = "*build/*/mapping.txt"
-)
-
 // Result ...
 type Result struct {
 	appFiles     []gradle.Artifact
 	appType      appType
 	mappingFiles []gradle.Artifact
+}
+
+// AndroidBuild ...
+type AndroidBuild struct {
+	stepInputParser InputParser
+	logger          log.Logger
+	cmdFactory      command.Factory
 }
 
 // InputParser ...
@@ -86,6 +71,26 @@ type GradleProjectWrapper interface {
 	FindArtifacts(generatedAfter time.Time, pattern string, includeModuleInName bool) ([]gradle.Artifact, error)
 }
 
+type appType string
+
+const (
+	appTypeAPK = appType("apk")
+	appTypeAAB = appType("aab")
+)
+
+const (
+	apkEnvKey     = "BITRISE_APK_PATH"
+	apkListEnvKey = "BITRISE_APK_PATH_LIST"
+
+	aabEnvKey     = "BITRISE_AAB_PATH"
+	aabListEnvKey = "BITRISE_AAB_PATH_LIST"
+
+	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
+	mappingFilePattern = "*build/*/mapping.txt"
+)
+
+var ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
+
 // NewInputParser ...
 func NewInputParser() InputParser {
 	return envInputParser{}
@@ -97,13 +102,6 @@ func (envInputParser) Parse() (Input, error) {
 		return Input{}, err
 	}
 	return i, nil
-}
-
-// AndroidBuild ...
-type AndroidBuild struct {
-	stepInputParser InputParser
-	logger          log.Logger
-	cmdFactory      command.Factory
 }
 
 // NewAndroidBuild ...
