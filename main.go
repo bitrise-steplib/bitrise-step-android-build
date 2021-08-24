@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/bitrise-io/go-steputils/stepconf"
@@ -12,36 +11,33 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
-		fmt.Printf("Step run failed: %s\n", err)
-		os.Exit(1)
-	}
+	os.Exit(run())
 }
 
-func run() error {
-	androidBuild := createAndroidBuild()
+func run() int {
+	inputParser := stepconf.NewDefaultEnvParser()
+	logger := log.NewLogger(false)
+	cmdFactory := command.NewFactory(env.NewRepository())
+	androidBuild := step.NewAndroidBuild(inputParser, logger, cmdFactory)
+
 	config, err := androidBuild.ProcessConfig()
 	if err != nil {
-		return err
+		logger.Errorf(err.Error())
+		return 1
 	}
 
 	result, err := androidBuild.Run(config)
 	if err != nil {
-		return err
+		logger.Errorf(err.Error())
+		return 1
 	}
 
 	if err := androidBuild.Export(result, config.DeployDir); err != nil {
-		return err
+		logger.Errorf(err.Error())
+		return 1
 	}
 
 	androidBuild.CollectCache(config)
 
-	return nil
-}
-
-func createAndroidBuild() *step.AndroidBuild {
-	inputParser := stepconf.NewDefaultEnvParser()
-	logger := log.NewLogger(false)
-	cmdFactory := command.NewFactory(env.NewRepository())
-	return step.NewAndroidBuild(inputParser, logger, cmdFactory)
+	return 0
 }
