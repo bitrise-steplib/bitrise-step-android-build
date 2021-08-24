@@ -100,7 +100,6 @@ Build a release AAB:
 | `app_path_pattern` | Will find the APK or AAB files - depending on the **Build type** input - with the given pattern.<br/> Separate patterns with a newline. **Note**<br/> The Step will export only the selected artifact type even if the filter would accept other artifact types as well.  | required | `*/build/outputs/apk/*.apk */build/outputs/bundle/*.aab` |
 | `cache_level` | `all` - The Step will cache build cache and the dependencies `only_deps` - The Step will cache dependencies only `none` - The Step will not cache anything | required | `only_deps` |
 | `arguments` | Extra arguments passed to the gradle task |  |  |
-| `apk_path_pattern` | This input is **DEPRECATED** - use the App location pattern input instead  Will find the APK files with the given pattern.  |  |  |
 </details>
 
 <details>
