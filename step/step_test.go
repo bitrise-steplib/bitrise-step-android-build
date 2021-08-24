@@ -9,6 +9,7 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/env"
 	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-steplib/bitrise-step-android-build/step/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -205,7 +206,7 @@ func Test_GivenMatchingFiles_WhenGettingArtifacts_ThenArtifactsReturned(t *testi
 	step := createStep()
 	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
 	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
-	gradleWrapper := new(MockGradleProjectWrapper)
+	gradleWrapper := new(mocks.MockGradleProjectWrapper)
 	testArtifacts := []gradle.Artifact{
 		{
 			Path: "/bitrise/src/app/build/outputs/apk/my-app-debug.apk",
@@ -230,7 +231,7 @@ func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck
 	step := createStep()
 	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
 	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
-	gradleWrapper := new(MockGradleProjectWrapper)
+	gradleWrapper := new(mocks.MockGradleProjectWrapper)
 	testArtifacts := []gradle.Artifact{
 		{
 			Path: "/bitrise/src/app/build/outputs/apk/my-app-debug.apk",
