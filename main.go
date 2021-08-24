@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/env"
 	"github.com/bitrise-io/go-utils/log"
@@ -39,8 +40,8 @@ func run() error {
 }
 
 func createAndroidBuild() *step.AndroidBuild {
-	stepInputParser := step.NewInputParser()
+	inputParser := stepconf.NewDefaultEnvParser()
 	logger := log.NewLogger(false)
 	cmdFactory := command.NewFactory(env.NewRepository())
-	return step.NewAndroidBuild(stepInputParser, logger, cmdFactory)
+	return step.NewAndroidBuild(inputParser, logger, cmdFactory)
 }

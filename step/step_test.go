@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bitrise-io/go-android/gradle"
+	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/env"
 	"github.com/bitrise-io/go-utils/log"
@@ -254,8 +255,8 @@ func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck
 
 func createStep() AndroidBuild {
 	return AndroidBuild{
-		stepInputParser: NewInputParser(),
-		logger:          log.NewLogger(true),
-		cmdFactory:      command.NewFactory(env.NewRepository()),
+		inputParser: stepconf.NewDefaultEnvParser(),
+		logger:      log.NewLogger(true),
+		cmdFactory:  command.NewFactory(env.NewRepository()),
 	}
 }

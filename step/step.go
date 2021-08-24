@@ -54,17 +54,10 @@ type Result struct {
 
 // AndroidBuild ...
 type AndroidBuild struct {
-	stepInputParser InputParser
-	logger          log.Logger
-	cmdFactory      command.Factory
+	inputParser stepconf.EnvParser
+	logger      log.Logger
+	cmdFactory  command.Factory
 }
-
-// InputParser ...
-type InputParser interface {
-	Parse() (Input, error)
-}
-
-type envInputParser struct{}
 
 // GradleProjectWrapper ...
 type GradleProjectWrapper interface {
@@ -91,27 +84,15 @@ const (
 
 var ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
 
-// NewInputParser ...
-func NewInputParser() InputParser {
-	return envInputParser{}
-}
-
-func (envInputParser) Parse() (Input, error) {
-	var i Input
-	if err := stepconf.Parse(&i); err != nil {
-		return Input{}, err
-	}
-	return i, nil
-}
-
 // NewAndroidBuild ...
-func NewAndroidBuild(stepInputParser InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
-	return &AndroidBuild{stepInputParser: stepInputParser, logger: logger, cmdFactory: cmdFactory}
+func NewAndroidBuild(inputParser stepconf.EnvParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
+	return &AndroidBuild{inputParser: inputParser, logger: logger, cmdFactory: cmdFactory}
 }
 
 // ProcessConfig ...
 func (a AndroidBuild) ProcessConfig() (Config, error) {
-	input, err := a.stepInputParser.Parse()
+	var input Input
+	err := a.inputParser.Parse(&input)
 	if err != nil {
 		return Config{}, err
 	}
