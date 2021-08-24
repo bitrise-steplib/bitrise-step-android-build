@@ -54,7 +54,7 @@ type Result struct {
 
 // AndroidBuild ...
 type AndroidBuild struct {
-	inputParser stepconf.EnvParser
+	inputParser stepconf.InputParser
 	logger      log.Logger
 	cmdFactory  command.Factory
 }
@@ -85,7 +85,7 @@ const (
 var ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
 
 // NewAndroidBuild ...
-func NewAndroidBuild(inputParser stepconf.EnvParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
+func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
 	return &AndroidBuild{inputParser: inputParser, logger: logger, cmdFactory: cmdFactory}
 }
 

@@ -255,9 +255,10 @@ func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck
 }
 
 func createStep() AndroidBuild {
+	envRepository := env.NewRepository()
 	return AndroidBuild{
-		inputParser: stepconf.NewDefaultEnvParser(),
-		logger:      log.NewLogger(true),
-		cmdFactory:  command.NewFactory(env.NewRepository()),
+		inputParser: stepconf.NewInputParser(envRepository),
+		logger:      log.NewLogger(),
+		cmdFactory:  command.NewFactory(envRepository),
 	}
 }

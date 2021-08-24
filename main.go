@@ -15,9 +15,10 @@ func main() {
 }
 
 func run() int {
-	inputParser := stepconf.NewDefaultEnvParser()
-	logger := log.NewLogger(false)
-	cmdFactory := command.NewFactory(env.NewRepository())
+	envRepository := env.NewRepository()
+	inputParser := stepconf.NewInputParser(envRepository)
+	logger := log.NewLogger()
+	cmdFactory := command.NewFactory(envRepository)
 	androidBuild := step.NewAndroidBuild(inputParser, logger, cmdFactory)
 
 	config, err := androidBuild.ProcessConfig()
