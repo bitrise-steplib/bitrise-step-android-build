@@ -2,7 +2,7 @@
 ## explicit
 github.com/bitrise-io/go-android/cache
 github.com/bitrise-io/go-android/gradle
-# github.com/bitrise-io/go-steputils v0.0.0-20210824134234-570a8ce1f517
+# github.com/bitrise-io/go-steputils v0.0.0-20210824140209-e19983be529f
 ## explicit
 github.com/bitrise-io/go-steputils/cache
 github.com/bitrise-io/go-steputils/stepconf
