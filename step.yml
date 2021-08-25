@@ -142,15 +142,7 @@ inputs:
       summary: Extra arguments passed to the gradle task
       description: Extra arguments passed to the gradle task
       is_required: false
-  - apk_path_pattern:
-    opts:
-      category: Deprecated
-      title: APK location pattern
-      summary: This input is **DEPRECATED** - use the App location pattern input instead
-      description: |
-        This input is **DEPRECATED** - use the App location pattern input instead
-        
-        Will find the APK files with the given pattern.
+
 outputs:
   - BITRISE_APK_PATH:
     opts:

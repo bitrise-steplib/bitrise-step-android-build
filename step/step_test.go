@@ -1,11 +1,18 @@
-package main
+package step
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/require"
+	"time"
 
 	"github.com/bitrise-io/go-android/gradle"
+	"github.com/bitrise-io/go-steputils/stepconf"
+	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/env"
+	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-steplib/bitrise-step-android-build/step/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilterVariants(t *testing.T) {
@@ -191,5 +198,67 @@ func TestVariantSeparation(t *testing.T) {
 
 		// Then
 		require.Equal(t, testCase.want, variants)
+	}
+}
+
+func Test_GivenMatchingFiles_WhenGettingArtifacts_ThenArtifactsReturned(t *testing.T) {
+	// Given
+	step := createStep()
+	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
+	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
+	gradleWrapper := new(mocks.MockGradleProjectWrapper)
+	testArtifacts := []gradle.Artifact{
+		{
+			Path: "/bitrise/src/app/build/outputs/apk/my-app-debug.apk",
+			Name: "my-app-debug.apk",
+		},
+	}
+	gradleWrapper.On("FindArtifacts", startTime, appPathPattern[0], false).Return(testArtifacts, nil)
+	gradleWrapper.On("FindArtifacts", startTime, appPathPattern[1], false).Return([]gradle.Artifact{}, nil)
+
+	// When
+	artifacts, err := step.getArtifacts(gradleWrapper, startTime, appPathPattern, false)
+
+	// Then
+	assert.NoError(t, err)
+	assert.Equal(t, testArtifacts, artifacts)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[0], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[1], false)
+}
+
+func Test_GivenNoMatchingFiles_WhenGettingArtifacts_ThenRetryWithoutModTimeCheck(t *testing.T) {
+	// Given
+	step := createStep()
+	startTime := time.Date(2021, 8, 18, 8, 0, 0, 0, time.UTC)
+	appPathPattern := []string{"*/build/outputs/apk/*.apk", "*/build/outputs/bundle/*.aab"}
+	gradleWrapper := new(mocks.MockGradleProjectWrapper)
+	testArtifacts := []gradle.Artifact{
+		{
+			Path: "/bitrise/src/app/build/outputs/apk/my-app-debug.apk",
+			Name: "my-app-debug.apk",
+		},
+	}
+	gradleWrapper.On("FindArtifacts", startTime, mock.Anything, false).Return([]gradle.Artifact{}, nil)
+	gradleWrapper.On("FindArtifacts", time.Time{}, appPathPattern[0], false).Return(testArtifacts, nil)
+	gradleWrapper.On("FindArtifacts", time.Time{}, appPathPattern[1], false).Return([]gradle.Artifact{}, nil)
+
+	// When
+	artifacts, err := step.getArtifacts(gradleWrapper, startTime, appPathPattern, false)
+
+	// Then
+	assert.NoError(t, err)
+	assert.Equal(t, testArtifacts, artifacts)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[0], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", startTime, appPathPattern[1], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", time.Time{}, appPathPattern[0], false)
+	gradleWrapper.AssertCalled(t, "FindArtifacts", time.Time{}, appPathPattern[1], false)
+}
+
+func createStep() AndroidBuild {
+	envRepository := env.NewRepository()
+	return AndroidBuild{
+		inputParser: stepconf.NewInputParser(envRepository),
+		logger:      log.NewLogger(),
+		cmdFactory:  command.NewFactory(envRepository),
 	}
 }
