@@ -7,7 +7,7 @@ workflows:
     title: Test simple Android project with nested module
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: maintenance
+    - BRANCH: master
     - EXPECTED_APK: mylibrary-debug-androidTest.apk
     before_run:
     - _setup
@@ -26,7 +26,7 @@ workflows:
     title: Test simple Android project and APK building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: maintenance
+    - BRANCH: master
     - EXPECTED_APK: another_app-demo-release-unsigned.apk
     - EXPECTED_MAPPING: another_app-mapping.txt
     before_run:
@@ -48,7 +48,7 @@ workflows:
     title: Test project in monorepo and APK building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
-    - BRANCH: maintenance
+    - BRANCH: master
     - EXPECTED_APK: IdlingResourceSample-app-debug.apk
     before_run:
     - _setup
@@ -72,7 +72,7 @@ workflows:
     title: Test simple Android project and AAB building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: maintenance
+    - BRANCH: master
     - EXPECTED_AAB: another_app-demo-release.aab
     - EXPECTED_MAPPING: another_app-mapping.txt
     before_run:
@@ -95,7 +95,7 @@ workflows:
     title: Test project in monorepo and AAB building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
-    - BRANCH: maintenance
+    - BRANCH: master
     - EXPECTED_AAB: IdlingResourceSample-app.aab
     before_run:
     - _setup
