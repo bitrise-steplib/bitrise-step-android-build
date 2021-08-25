@@ -96,7 +96,7 @@ workflows:
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
     - BRANCH: maintenance
-    - EXPECTED_AAB: IdlingResourceSample-app.aab
+    - EXPECTED_AAB: IdlingResourceSample-app-debug.aab
     before_run:
     - _setup
     after_run:
