@@ -38,7 +38,7 @@ type Config struct {
 	Module  string
 
 	AppPathPattern string
-	AppType        appType
+	AppType        string
 	Arguments      string
 
 	CacheLevel cache.Level
@@ -48,7 +48,7 @@ type Config struct {
 // Result ...
 type Result struct {
 	appFiles     []gradle.Artifact
-	appType      appType
+	appType      string
 	mappingFiles []gradle.Artifact
 }
 
@@ -64,11 +64,9 @@ type GradleProjectWrapper interface {
 	FindArtifacts(generatedAfter time.Time, pattern string, includeModuleInName bool) ([]gradle.Artifact, error)
 }
 
-type appType string
-
-const appTypeAPK = appType("apk")
-
 const (
+	apkAppType = "apk"
+
 	apkEnvKey     = "BITRISE_APK_PATH"
 	apkListEnvKey = "BITRISE_APK_PATH_LIST"
 
@@ -99,7 +97,7 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 		AppPathPattern:  input.AppPathPattern,
 		Variant:         input.Variant,
 		Module:          input.Module,
-		AppType:         appType(input.BuildType),
+		AppType:         input.BuildType,
 		Arguments:       input.Arguments,
 		CacheLevel:      cache.Level(input.CacheLevel),
 		DeployDir:       input.DeployDir,
@@ -114,7 +112,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 	}
 
 	var buildTask *gradle.Task
-	if cfg.AppType == appTypeAPK {
+	if cfg.AppType == apkAppType {
 		buildTask = gradleProject.GetTask("assemble")
 	} else {
 		buildTask = gradleProject.GetTask("bundle")
@@ -190,7 +188,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 
 	// Use the correct env key for the selected build type
 	var envKey string
-	if result.appType == appTypeAPK {
+	if result.appType == apkAppType {
 		envKey = apkEnvKey
 	} else {
 		envKey = aabEnvKey
@@ -208,7 +206,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	}
 
 	// Use the correct env key for the selected build type
-	if result.appType == appTypeAPK {
+	if result.appType == apkAppType {
 		envKey = apkListEnvKey
 	} else {
 		envKey = aabListEnvKey
