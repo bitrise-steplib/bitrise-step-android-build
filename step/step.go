@@ -66,10 +66,7 @@ type GradleProjectWrapper interface {
 
 type appType string
 
-const (
-	appTypeAPK = appType("apk")
-	appTypeAAB = appType("aab")
-)
+const appTypeAPK = appType("apk")
 
 const (
 	apkEnvKey     = "BITRISE_APK_PATH"

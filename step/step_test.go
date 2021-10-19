@@ -32,13 +32,13 @@ func TestFilterVariants(t *testing.T) {
 
 		require.Equal(t, expectedVariants, filtered)
 
-		filtered, err = filterVariants("module1", "variant100", variants)
+		_, err = filterVariants("module1", "variant100", variants)
 		require.Error(t, err)
 
-		filtered, err = filterVariants("module100", "variant100", variants)
+		_, err = filterVariants("module100", "variant100", variants)
 		require.Error(t, err)
 
-		filtered, err = filterVariants("module100", "variant1", variants)
+		_, err = filterVariants("module100", "variant1", variants)
 		require.Error(t, err)
 	}
 
@@ -53,7 +53,7 @@ func TestFilterVariants(t *testing.T) {
 
 		require.Equal(t, expectedVariants, filtered)
 
-		filtered, err = filterVariants("module3", "", variants)
+		_, err = filterVariants("module3", "", variants)
 		require.Error(t, err)
 	}
 
