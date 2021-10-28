@@ -5,7 +5,6 @@ workflows:
   sample:
     steps:
     - git-clone:
-        run_if: "true"
         inputs:
         - repository_url: https://github.com/bitrise-io/Bitrise-Android-Sample.git
         - clone_into_dir: ./_tmp

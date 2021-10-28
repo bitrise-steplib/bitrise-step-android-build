@@ -124,7 +124,6 @@ workflows:
         - content: rm -rf _tmp
     - change-workdir:
         title: Switch working dir to _tmp
-        run_if: "true"
         inputs:
         - path: ./_tmp
         - is_create_path: true
