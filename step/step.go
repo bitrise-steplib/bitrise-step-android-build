@@ -39,7 +39,7 @@ type Config struct {
 
 	AppPathPattern string
 	AppType        string
-	Arguments      string
+	Arguments      []string
 
 	CacheLevel cache.Level
 	DeployDir  string
@@ -92,13 +92,19 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 		return Config{}, err
 	}
 	stepconf.Print(input)
+
+	args, err := shellquote.Split(input.Arguments)
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to parse arguments: %s", err)
+	}
+
 	return Config{
 		ProjectLocation: input.ProjectLocation,
 		AppPathPattern:  input.AppPathPattern,
 		Variant:         input.Variant,
 		Module:          input.Module,
 		AppType:         input.BuildType,
-		Arguments:       input.Arguments,
+		Arguments:       args,
 		CacheLevel:      cache.Level(input.CacheLevel),
 		DeployDir:       input.DeployDir,
 	}, nil
@@ -118,7 +124,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 		buildTask = gradleProject.GetTask("bundle")
 	}
 
-	variants, err := buildTask.GetVariants()
+	variants, err := buildTask.GetVariants(cfg.Arguments...)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to fetch variants: %s", err)
 	}
@@ -280,13 +286,8 @@ func (a AndroidBuild) getArtifacts(gradleProject GradleProjectWrapper, started t
 }
 
 func (a AndroidBuild) executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Variants) error {
-	args, err := shellquote.Split(cfg.Arguments)
-	if err != nil {
-		return fmt.Errorf("failed to parse arguments: %s", err)
-	}
-
 	a.logger.Infof("Run build:")
-	buildCommand := buildTask.GetCommand(variants, args...)
+	buildCommand := buildTask.GetCommand(variants, cfg.Arguments...)
 
 	a.logger.Println()
 	a.logger.Donef("$ " + buildCommand.PrintableCommandArgs())

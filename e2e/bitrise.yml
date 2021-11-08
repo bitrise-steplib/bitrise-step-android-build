@@ -43,6 +43,7 @@ workflows:
         inputs:
         - module: another_app
         - variant: DemoRelease
+        - arguments: --warn
 
   test_monorepo_apk:
     title: Test project in monorepo and APK building
