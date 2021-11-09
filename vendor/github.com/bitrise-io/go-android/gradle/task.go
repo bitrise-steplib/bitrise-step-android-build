@@ -16,9 +16,9 @@ type Task struct {
 }
 
 // GetVariants ...
-func (task *Task) GetVariants() (Variants, error) {
+func (task *Task) GetVariants(args ...string) (Variants, error) {
 	opts := command.Opts{Dir: task.project.location}
-	args := []string{"tasks", "--all", "--console=plain", "--quiet"}
+	args = append([]string{"tasks", "--all", "--console=plain", "--quiet"}, args...)
 	cmd := task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), args, &opts)
 	tasksOutput, err := cmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
