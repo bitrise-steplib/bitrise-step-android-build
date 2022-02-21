@@ -6,7 +6,7 @@ Build an APK from the debug variant:
 - android-build:
     inputs:
     - variant: debug
-    - app_type: apk
+    - build_type: apk
 ```
 
 Build a release AAB:
@@ -15,5 +15,5 @@ Build a release AAB:
 - android-build:
     inputs:
     - variant: release
-    - app_type: aab
+    - build_type: aab
 ```
