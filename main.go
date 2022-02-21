@@ -23,18 +23,18 @@ func run() int {
 
 	config, err := androidBuild.ProcessConfig()
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Errorf("process config: %s", err.Error())
 		return 1
 	}
 
 	result, err := androidBuild.Run(config)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Errorf("run: %s", err.Error())
 		return 1
 	}
 
 	if err := androidBuild.Export(result, config.DeployDir); err != nil {
-		logger.Errorf(err.Error())
+		logger.Errorf("export outputs: %s", err.Error())
 		return 1
 	}
 
