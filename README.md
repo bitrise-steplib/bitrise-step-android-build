@@ -8,43 +8,43 @@ Builds your Android project with Gradle.
 <summary>Description</summary>
 
 
-The Step builds your Android project on Bitrise with Gradle commands: it installs all dependences that are listed in the project's `build.gradle` file, and builds and exports either an APK or an AAB. 
+The Step builds your Android project on Bitrise with Gradle commands: it installs all dependences that are listed in the project's `build.gradle` file, and builds and exports either an APK or an AAB.
 Once the file is exported, it is available for other Steps in your Workflow.
 
 You can select the module and the variant you want to use for the build.
 
-### Configuring the Step 
+### Configuring the Step
 
 1. Make sure the **Project Location** input points to the root directory of your Android project.
 1. In the **Module** input, set the module that you want to build.
-   
+
    You can find the available modules in Android Studio.
 
-1. In the **Variant** input, set the variant that you want to build. 
-   
+1. In the **Variant** input, set the variant that you want to build.
+
    You can find the available variants in Android Studio.
-   
-1. In the **Build type** input, select the file type you want to build. 
+
+1. In the **Build type** input, select the file type you want to build.
 
    The options are:
    - `apk`
    - `aab`
-   
+
 1. In the **Options** input group, you can set more advanced configuration options for the Step:
 
-   - In the **App artifact (.apk, .aab) location pattern** input, you can tell the Step where to look for the APK or AAB files in your project to export them. 
+   - In the **App artifact (.apk, .aab) location pattern** input, you can tell the Step where to look for the APK or AAB files in your project to export them.
    For the vast majority of Android projects, the default values do NOT need to be changed.
-   
-   - In the **Additional Gradle Arguments**, you can add additional command line arguments to the Gradle task. Read more about [Gradle's Command Line Interface](https://docs.gradle.org/current/userguide/command_line_interface.html).
-   
-   - The **Set the level of cache** input allows you to set what will be cached during the build: everything, dependencies only, or nothing.
-   
-### Troubleshooting 
 
-Be aware that an APK or AAB built by the Step is still unsigned: code signing is performed either in Gradle itself or by other Steps. To be able to deploy your APK or AAB to an online store, you need code signing. 
+   - In the **Additional Gradle Arguments**, you can add additional command line arguments to the Gradle task. Read more about [Gradle's Command Line Interface](https://docs.gradle.org/current/userguide/command_line_interface.html).
+
+   - The **Set the level of cache** input allows you to set what will be cached during the build: everything, dependencies only, or nothing.
+
+### Troubleshooting
+
+Be aware that an APK or AAB built by the Step is still unsigned: code signing is performed either in Gradle itself or by other Steps. To be able to deploy your APK or AAB to an online store, you need code signing.
 
 If you want to build a custom module or variant, always check that the value you set in the respective input is correct. A typo means your build will fail; if the module or variant does not exist in Android Studio, the build will fail.
- 
+
 ### Useful links
 
 - [Getting started with Android apps](https://devcenter.bitrise.io/getting-started/getting-started-with-android-apps/)
@@ -52,7 +52,7 @@ If you want to build a custom module or variant, always check that the value you
 - [Generating and deploying Android app bundles](https://devcenter.bitrise.io/deploy/android-deploy/generating-and-deploying-android-app-bundles/)
 - [Gradle's Command Line Interface](https://docs.gradle.org/current/userguide/command_line_interface.html)
 
-### Related Steps 
+### Related Steps
 
 - [Gradle Runner](https://www.bitrise.io/integrations/steps/gradle-runner)
 - [Android Sign](https://www.bitrise.io/integrations/steps/sign-apk)
@@ -73,7 +73,7 @@ Build an APK from the debug variant:
 - android-build:
     inputs:
     - variant: debug
-    - app_type: apk
+    - build_type: apk
 ```
 
 Build a release AAB:
@@ -82,7 +82,7 @@ Build a release AAB:
 - android-build:
     inputs:
     - variant: release
-    - app_type: aab
+    - build_type: aab
 ```
 
 
