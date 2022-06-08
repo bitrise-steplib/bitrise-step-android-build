@@ -77,7 +77,8 @@ const (
 	mappingFilePattern = "*build/*/mapping.txt"
 )
 
-var ignoredSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
+// TODO: explain
+var ignoredTaskSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
 
 // NewAndroidBuild ...
 func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
@@ -377,7 +378,7 @@ func filterNonUtilityVariants(variants []string) []string {
 
 	for _, v := range variants {
 		shouldIgnore := false
-		for _, suffix := range ignoredSuffixes {
+		for _, suffix := range ignoredTaskSuffixes {
 			if strings.HasSuffix(v, suffix) {
 				shouldIgnore = true
 				break
