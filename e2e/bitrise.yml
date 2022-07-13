@@ -8,7 +8,6 @@ workflows:
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
     - BRANCH: maintenance
-    - EXPECTED_APK: mylibrary-debug-androidTest.apk
     before_run:
     - _setup
     steps:
