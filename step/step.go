@@ -15,7 +15,6 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
-	"github.com/bitrise-io/go-utils/sliceutil"
 	"github.com/kballard/go-shellquote"
 )
 
@@ -320,23 +319,6 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	}
 
 	return nil
-}
-
-func (a AndroidBuild) printVariants(variants, filteredVariants gradle.Variants) {
-	a.logger.Println()
-	a.logger.Infof("Variants:")
-
-	for module, variants := range variants {
-		a.logger.Printf("%s:", module)
-		for _, variant := range variants {
-			if sliceutil.IsStringInSlice(variant, filteredVariants[module]) {
-				a.logger.Donef("✓ %s", variant)
-				continue
-			}
-			a.logger.Printf("- %s", variant)
-		}
-	}
-	a.logger.Println()
 }
 
 func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
