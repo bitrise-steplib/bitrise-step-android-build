@@ -34,8 +34,8 @@ type Input struct {
 type Config struct {
 	ProjectLocation string
 
-	Variant string
-	Module  string
+	Variants []string
+	Module   string
 
 	AppPathPattern string
 	AppType        string
@@ -100,7 +100,7 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 	return Config{
 		ProjectLocation: input.ProjectLocation,
 		AppPathPattern:  input.AppPathPattern,
-		Variant:         input.Variant,
+		Variants:        strings.Split(input.Variant, "\n"),
 		Module:          input.Module,
 		AppType:         input.BuildType,
 		Arguments:       args,
@@ -297,12 +297,16 @@ func (a AndroidBuild) getArtifacts(gradleProject GradleProjectWrapper, started t
 func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	a.logger.Infof("Run build:")
 
-	taskName, err := gradleTaskName(cfg.AppType, cfg.Module, cfg.Variant)
-	if err != nil {
-		return err
+	var tasks []string
+	for _, variant := range cfg.Variants {
+		taskName, err := gradleTaskName(cfg.AppType, cfg.Module, variant)
+		if err != nil {
+			return err
+		}
+		tasks = append(tasks, taskName)
 	}
 
-	cmdArgs := append([]string{taskName}, cfg.Arguments...)
+	cmdArgs := append(tasks, cfg.Arguments...)
 	cmdOpts := command.Opts{
 		Dir:    cfg.ProjectLocation,
 		Stdout: os.Stdout,
