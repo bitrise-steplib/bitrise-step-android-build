@@ -11,8 +11,6 @@ workflows:
     - EXPECTED_APK: mylibrary-debug-androidTest.apk
     before_run:
     - _setup
-    after_run:
-    - _check_apk
     steps:
     - install-missing-android-tools:
         inputs:

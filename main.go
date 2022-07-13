@@ -35,7 +35,7 @@ func run() int {
 
 	if err := androidBuild.Export(result, config.DeployDir); err != nil {
 		logger.Errorf("Export outputs: %s", err.Error())
-		return 1
+		return 0 // Export is optional, should not mark the step as failed
 	}
 
 	androidBuild.CollectCache(config)

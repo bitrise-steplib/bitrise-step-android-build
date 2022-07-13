@@ -2,6 +2,7 @@ package step
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -66,6 +67,7 @@ type GradleProjectWrapper interface {
 
 const (
 	apkAppType = "apk"
+	aabAppType = "aab"
 
 	apkEnvKey     = "BITRISE_APK_PATH"
 	apkListEnvKey = "BITRISE_APK_PATH_LIST"
@@ -76,9 +78,6 @@ const (
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
 )
-
-// TODO: explain
-var ignoredTaskSuffixes = [...]string{"Classes", "Resources", "UnitTestClasses", "AndroidTestClasses", "AndroidTestResources"}
 
 // NewAndroidBuild ...
 func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
@@ -118,28 +117,9 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 		return Result{}, fmt.Errorf("failed to open Gradle project: %s", err)
 	}
 
-	var buildTask *gradle.Task
-	if cfg.AppType == apkAppType {
-		buildTask = gradleProject.GetTask("assemble")
-	} else {
-		buildTask = gradleProject.GetTask("bundle")
-	}
-
-	variants, err := buildTask.GetVariants(cfg.Arguments...)
-	if err != nil {
-		return Result{}, fmt.Errorf("failed to fetch variants: %s", err)
-	}
-
-	filteredVariants, err := filterVariants(cfg.Module, cfg.Variant, variants)
-	if err != nil {
-		return Result{}, fmt.Errorf("failed to find buildable variants: %s", err)
-	}
-
-	a.printVariants(variants, filteredVariants)
-
 	started := time.Now()
 
-	if err := a.executeGradleBuild(cfg, buildTask, filteredVariants); err != nil {
+	if err := a.executeGradleBuild(cfg); err != nil {
 		return Result{}, err
 	}
 
@@ -264,6 +244,35 @@ func (a AndroidBuild) CollectCache(cfg Config) {
 	a.logger.Donef("Done")
 }
 
+func gradleTaskName(appType, module, variant string) (string, error) {
+	var task string
+
+	// Note: the task should not start with a colon because that syntax only works from the
+	// root folder, but the step has a project path input and we "cd" into that dir. It's a valid step configuration
+	// to define a submodule's path as project path and in this case `:assembleDebug` doesn't work, only `assembleDebug`
+	// This is only relevant when the module is NOT defined, a module should always have the colon prefix.
+	if appType == apkAppType {
+		task = "assemble"
+	} else if appType == aabAppType {
+		task = "bundle"
+	} else {
+		return "", fmt.Errorf("invalid app type: %s", appType)
+	}
+
+	// If variant is not defined, Gradle will execute the task for all variants (eg. assemble -> assembleDebug, assembleRelease)
+	if variant != "" {
+		task = task + strings.Title(variant)
+	}
+
+	// If module is not defined, Gradle will execute the task on all modules in the project
+	if module != "" {
+		rawModule := strings.TrimPrefix(module, ":")
+		task = fmt.Sprintf(":%s:%s", rawModule, task)
+	}
+
+	return task, nil
+}
+
 func (a AndroidBuild) getArtifacts(gradleProject GradleProjectWrapper, started time.Time, patterns []string, includeModule bool) (artifacts []gradle.Artifact, err error) {
 	for _, pattern := range patterns {
 		afs, err := gradleProject.FindArtifacts(started, pattern, includeModule)
@@ -286,15 +295,27 @@ func (a AndroidBuild) getArtifacts(gradleProject GradleProjectWrapper, started t
 	return
 }
 
-func (a AndroidBuild) executeGradleBuild(cfg Config, buildTask *gradle.Task, variants gradle.Variants) error {
+func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	a.logger.Infof("Run build:")
-	buildCommand := buildTask.GetCommand(variants, cfg.Arguments...)
+
+	taskName, err := gradleTaskName(cfg.AppType, cfg.Module, cfg.Variant)
+	if err != nil {
+		return err
+	}
+
+	cmdArgs := append([]string{taskName}, cfg.Arguments...)
+	cmdOpts := command.Opts{
+		Dir:    cfg.ProjectLocation,
+		Stdout: os.Stdout,
+		Stderr: os.Stdin,
+	}
+	cmd := a.cmdFactory.Create(filepath.Join(cfg.ProjectLocation, "gradlew"), cmdArgs, &cmdOpts)
 
 	a.logger.Println()
-	a.logger.Donef("$ " + buildCommand.PrintableCommandArgs())
+	a.logger.Donef("$ " + cmd.PrintableCommandArgs())
 	a.logger.Println()
 
-	if err := buildCommand.Run(); err != nil {
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("build task failed: %v", err)
 	}
 
@@ -332,67 +353,6 @@ func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPath
 	a.logger.Println()
 }
 
-func filterVariants(module, variant string, variantsMap gradle.Variants) (gradle.Variants, error) {
-	// if module set: drop all the other modules
-	if module != "" {
-		v, ok := variantsMap[module]
-		if !ok {
-			return nil, fmt.Errorf("module not found: %s", module)
-		}
-		variantsMap = gradle.Variants{module: v}
-	}
-
-	// if variant not set: use all variants, except utility ones
-	if variant == "" {
-		for module, variants := range variantsMap {
-			variantsMap[module] = filterNonUtilityVariants(variants)
-		}
-
-		return variantsMap, nil
-	}
-
-	variants := separateVariants(variant)
-
-	filteredVariants := gradle.Variants{}
-	for _, variant := range variants {
-		found := false
-		for m, moduleVariants := range variantsMap {
-			for _, v := range moduleVariants {
-				if strings.EqualFold(v, variant) {
-					filteredVariants[m] = append(filteredVariants[m], v)
-					found = true
-				}
-			}
-		}
-
-		if !found {
-			return nil, fmt.Errorf("variant: %s not found in any module", variant)
-		}
-	}
-
-	return filteredVariants, nil
-}
-
-func filterNonUtilityVariants(variants []string) []string {
-	var filteredVariants []string
-
-	for _, v := range variants {
-		shouldIgnore := false
-		for _, suffix := range ignoredTaskSuffixes {
-			if strings.HasSuffix(v, suffix) {
-				shouldIgnore = true
-				break
-			}
-		}
-
-		if !shouldIgnore {
-			filteredVariants = append(filteredVariants, v)
-		}
-	}
-
-	return filteredVariants
-}
-
 func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
 	var paths []string
 	for _, artifact := range artifacts {
@@ -420,14 +380,4 @@ func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir str
 		paths = append(paths, filepath.Join(deployDir, artifact.Name))
 	}
 	return paths, nil
-}
-
-func separateVariants(variantsAsOneLine string) []string {
-	variants := strings.Split(variantsAsOneLine, `\n`)
-
-	for index, variant := range variants {
-		variants[index] = strings.TrimSpace(variant)
-	}
-
-	return variants
 }
