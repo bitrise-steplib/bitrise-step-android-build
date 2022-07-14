@@ -312,7 +312,11 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 		Stdout: os.Stdout,
 		Stderr: os.Stdin,
 	}
-	cmd := a.cmdFactory.Create(filepath.Join(cfg.ProjectLocation, "gradlew"), cmdArgs, &cmdOpts)
+	absPath, err := filepath.Abs(cfg.ProjectLocation)
+	if err != nil {
+		return err
+	}
+	cmd := a.cmdFactory.Create(filepath.Join(absPath, "gradlew"), cmdArgs, &cmdOpts)
 
 	a.logger.Println()
 	a.logger.Donef("$ " + cmd.PrintableCommandArgs())
