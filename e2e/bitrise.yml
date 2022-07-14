@@ -4,7 +4,7 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 workflows:
 
   test_nested_module:
-    title: Test simple Android project with nested module
+    title: Test simple Android project with nested application module
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
     - BRANCH: maintenance
@@ -21,6 +21,29 @@ workflows:
         - gradlew_path: ./gradlew
     - path::./:
         title: Test nested module
+        inputs:
+        - module: app:nested_app
+        - variant: release
+
+  test_multiple_variants:
+    title: Test building multiple variants
+    envs:
+    - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+    - BRANCH: maintenance
+    - EXPECTED_APK: nested_app-release-unsigned.apk
+    - EXPECTED_APK_PATH_LIST: $BITRISE_DEPLOY_DIR/nested_app-debug.apk|$BITRISE_DEPLOY_DIR/nested_app-release-unsigned.apk
+    - EXPECTED_MAPPING: app-mapping.txt
+    before_run:
+    - _setup
+    after_run:
+    - _check_apk
+    - _check_mapping
+    steps:
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Execute step
         inputs:
         - module: app:nested_app
         - variant: |-
@@ -173,6 +196,15 @@ workflows:
               echo "Expected APK ($EXPECTED_APK) is not found in deploy dir:"
               ls -la $BITRISE_DEPLOY_DIR
               exit 1
+            fi
+            
+            if [ -n "$EXPECTED_APK_PATH_LIST" ] ; then
+              if [ "$EXPECTED_APK_PATH_LIST" != "$BITRISE_APK_PATH_LIST" ] ; then
+                echo "Expected APK path list does not match actual step output"
+                echo "Expected: $EXPECTED_APK_PATH_LIST"
+                echo "Actual: $BITRISE_APK_PATH_LIST"
+                exit 1
+              fi
             fi
 
   _check_aab:
