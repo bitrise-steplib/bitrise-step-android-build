@@ -197,7 +197,7 @@ workflows:
               ls -la $BITRISE_DEPLOY_DIR
               exit 1
             fi
-            
+
             if [ -n "$EXPECTED_APK_PATH_LIST" ] ; then
               if [ "$EXPECTED_APK_PATH_LIST" != "$BITRISE_APK_PATH_LIST" ] ; then
                 echo "Expected APK path list does not match actual step output"
