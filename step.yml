@@ -92,11 +92,11 @@ inputs:
 - variant: ""
   opts:
     title: Variant
-    summary: |
-      Set the variant(s) that you want to build. To see your available variants, please open your project in Android Studio and go in [Project Structure] -> variants section.
+    summary: Set the build variant you want to create, such as `debug` or `myflavorRelease`. To see your available variants, open your project in Android Studio and go in [Project Structure] -> variants section.
     description: |
-      Set the variant(s) that you want to build. To see your available variants, please open your project in Android Studio and go in [Project Structure] -> variants section.
-      You can set multiple variants separated by `\n` character. For instance: `- variant: myvariant1\nmyvariant2`.
+      Set the variant(s) that you want to build. To see your available variants,  open your project in Android Studio and go in [Project Structure] -> variants section.
+
+      You can set multiple variants separated by a new line (`\n`), such as `myvariant1\nmyvariant2`.
     is_required: false
 - build_type: apk
   opts:
