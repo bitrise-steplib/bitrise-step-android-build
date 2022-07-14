@@ -4,15 +4,17 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 workflows:
 
   test_nested_module:
-    title: Test simple Android project with nested module
+    title: Test simple Android project with nested application module
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
     - BRANCH: maintenance
-    - EXPECTED_APK: mylibrary-debug-androidTest.apk
+    - EXPECTED_APK: nested_app-release-unsigned.apk
+    - EXPECTED_MAPPING: app-mapping.txt
     before_run:
     - _setup
     after_run:
     - _check_apk
+    - _check_mapping
     steps:
     - install-missing-android-tools:
         inputs:
@@ -20,7 +22,33 @@ workflows:
     - path::./:
         title: Test nested module
         inputs:
-        - module: app:mylibrary
+        - module: app:nested_app
+        - variant: release
+
+  test_multiple_variants:
+    title: Test building multiple variants
+    envs:
+    - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+    - BRANCH: maintenance
+    - EXPECTED_APK: another_app-full-release-unsigned.apk
+    - EXPECTED_APK_PATH_LIST: $BITRISE_DEPLOY_DIR/another_app-demo-release-unsigned.apk|$BITRISE_DEPLOY_DIR/another_app-full-release-unsigned.apk
+    - EXPECTED_MAPPING: another_app-mapping.txt
+    before_run:
+    - _setup
+    after_run:
+    - _check_apk
+    - _check_mapping
+    steps:
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: Execute step
+        inputs:
+        - module: another_app
+        - variant: |-
+            fullRelease
+            demoRelease
 
   test_simple_apk:
     title: Test simple Android project and APK building
@@ -46,7 +74,7 @@ workflows:
         - arguments: --warn
 
   test_monorepo_apk:
-    title: Test project in monorepo and APK building
+    title: Test multiple separate projects in a monorepo and APK building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
     - BRANCH: maintenance
@@ -93,7 +121,7 @@ workflows:
         - build_type: aab
 
   test_monorepo_aab:
-    title: Test project in monorepo and AAB building
+    title: Test multiple separate projects in a monorepo and AAB building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
     - BRANCH: maintenance
@@ -133,22 +161,6 @@ workflows:
         - repository_url: $TEST_APP_URL
         - clone_into_dir: .
         - branch: $BRANCH
-    - script:
-        run_if: $.IsCI
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -ex
-            if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-              sudo update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac
-              sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
-              export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
-              envman add --key JAVA_HOME --value "/usr/lib/jvm/java-11-openjdk-amd64"
-            elif [[ "$OSTYPE" == "darwin"* ]]; then
-              jenv global 11 || jenv global 11.0
-              export JAVA_HOME="$(jenv prefix)"
-              envman add --key JAVA_HOME --value "$(jenv prefix)"
-            fi
 
   _check_apk:
     steps:
@@ -168,6 +180,15 @@ workflows:
               echo "Expected APK ($EXPECTED_APK) is not found in deploy dir:"
               ls -la $BITRISE_DEPLOY_DIR
               exit 1
+            fi
+
+            if [ -n "$EXPECTED_APK_PATH_LIST" ] ; then
+              if [ "$EXPECTED_APK_PATH_LIST" != "$BITRISE_APK_PATH_LIST" ] ; then
+                echo "Expected APK path list does not match actual step output"
+                echo "Expected: $EXPECTED_APK_PATH_LIST"
+                echo "Actual: $BITRISE_APK_PATH_LIST"
+                exit 1
+              fi
             fi
 
   _check_aab:

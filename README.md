@@ -8,7 +8,7 @@ Builds your Android project with Gradle.
 <summary>Description</summary>
 
 
-The Step builds your Android project on Bitrise with Gradle commands: it installs all dependences that are listed in the project's `build.gradle` file, and builds and exports either an APK or an AAB.
+The Step builds your Android project on Bitrise with Gradle commands: it installs all dependencies that are listed in the project's `build.gradle` file, and builds and exports either an APK or an AAB.
 Once the file is exported, it is available for other Steps in your Workflow.
 
 You can select the module and the variant you want to use for the build.
@@ -95,7 +95,7 @@ Build a release AAB:
 | --- | --- | --- | --- |
 | `project_location` | The root directory of your Android project. For example, where your root build gradle file exist (also gradlew, settings.gradle, and so on) | required | `$BITRISE_SOURCE_DIR` |
 | `module` | Set the module that you want to build. To see your available modules, please open your project in Android Studio and go in [Project Structure] and see the list on the left.  |  |  |
-| `variant` | Set the variant(s) that you want to build. To see your available variants, please open your project in Android Studio and go in [Project Structure] -> variants section. You can set multiple variants separated by `\n` character. For instance: `- variant: myvariant1\nmyvariant2`.  |  |  |
+| `variant` | Set the variant(s) that you want to build. To see your available variants,  open your project in Android Studio and go in [Project Structure] -> variants section.  You can set multiple variants separated by a new line (`\n`), such as `myvariant1\nmyvariant2`.  |  |  |
 | `build_type` | Set the build type that you want to build.  | required | `apk` |
 | `app_path_pattern` | Will find the APK or AAB files - depending on the **Build type** input - with the given pattern.<br/> Separate patterns with a newline. **Note**<br/> The Step will export only the selected artifact type even if the filter would accept other artifact types as well.  | required | `*/build/outputs/apk/*.apk */build/outputs/bundle/*.aab` |
 | `cache_level` | `all` - The Step will cache build cache and the dependencies `only_deps` - The Step will cache dependencies only `none` - The Step will not cache anything | required | `only_deps` |
