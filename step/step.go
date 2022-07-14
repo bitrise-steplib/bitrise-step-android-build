@@ -310,7 +310,7 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	cmdOpts := command.Opts{
 		Dir:    cfg.ProjectLocation,
 		Stdout: os.Stdout,
-		Stderr: os.Stdin,
+		Stderr: os.Stderr,
 	}
 	absPath, err := filepath.Abs(cfg.ProjectLocation)
 	if err != nil {
