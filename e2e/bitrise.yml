@@ -84,17 +84,13 @@ workflows:
     after_run:
     - _check_apk
     steps:
-    - change-workdir:
-        title: cd ./ui/espresso/IdlingResourceSample
-        inputs:
-        - path: ./ui/espresso/IdlingResourceSample
-        - is_create_path: true
     - install-missing-android-tools:
         inputs:
-        - gradlew_path: ./gradlew
+        - gradlew_path: ui/espresso/IdlingResourceSample/gradlew
     - path::./:
         title: Test monorepo
         inputs:
+        - project_location: ui/espresso/IdlingResourceSample
         - variant: Debug
 
   test_simple_aab:
