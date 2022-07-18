@@ -100,7 +100,7 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 	return Config{
 		ProjectLocation: input.ProjectLocation,
 		AppPathPattern:  input.AppPathPattern,
-		Variants:        strings.Split(input.Variant, "\n"),
+		Variants:        strings.Split(input.Variant, `\n`),
 		Module:          input.Module,
 		AppType:         input.BuildType,
 		Arguments:       args,
