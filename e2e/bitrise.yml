@@ -46,6 +46,21 @@ workflows:
         title: Execute step
         inputs:
         - module: another_app
+        - variant: |-
+            fullRelease
+            demoRelease
+    - script:
+        title: Clean up APKs from previous build
+        inputs:
+        - content: |-
+            set -ex
+            
+            rm -rf $BITRISE_DEPLOY_DIR/*.apk
+    - path::./:
+        title: Execute step (compatibility mode)
+        description: The step used to split multiple variants by the "\n" substring instead of a literal line break
+        inputs:
+        - module: another_app
         - variant: fullRelease\ndemoRelease
 
   test_simple_apk:

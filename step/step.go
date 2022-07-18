@@ -100,7 +100,7 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 	return Config{
 		ProjectLocation: input.ProjectLocation,
 		AppPathPattern:  input.AppPathPattern,
-		Variants:        strings.Split(input.Variant, `\n`),
+		Variants:        parseVariants(input.Variant),
 		Module:          input.Module,
 		AppType:         input.BuildType,
 		Arguments:       args,
@@ -370,4 +370,18 @@ func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir str
 		paths = append(paths, filepath.Join(deployDir, artifact.Name))
 	}
 	return paths, nil
+}
+
+// parseVariants returns the list of variants from the raw step input string.
+// The variants are primarily split by linebreaks, but the step used to split by the "\n" substring in the past,
+// so we also handle that for backwards compatibility.
+func parseVariants(input string) []string {
+	var variants []string
+
+	for _, line := range strings.Split(input, "\n") {
+		variantsPerLine := strings.Split(line, `\n`)
+		variants = append(variants, variantsPerLine...)
+	}
+
+	return variants
 }
