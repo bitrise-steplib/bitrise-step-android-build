@@ -54,7 +54,7 @@ workflows:
         inputs:
         - content: |-
             set -ex
-            
+
             rm -rf $BITRISE_DEPLOY_DIR/*.apk
     - path::./:
         title: Execute step (compatibility mode)
