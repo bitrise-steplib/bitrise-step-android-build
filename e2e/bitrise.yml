@@ -46,9 +46,7 @@ workflows:
         title: Execute step
         inputs:
         - module: another_app
-        - variant: |-
-            fullRelease
-            demoRelease
+        - variant: fullRelease\ndemoRelease
 
   test_simple_apk:
     title: Test simple Android project and APK building
