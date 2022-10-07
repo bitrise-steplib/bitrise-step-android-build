@@ -16,6 +16,8 @@ import (
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/kballard/go-shellquote"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Input ...
@@ -260,7 +262,7 @@ func gradleTaskName(appType, module, variant string) (string, error) {
 
 	// If variant is not defined, Gradle will execute the task for all variants (eg. assemble -> assembleDebug, assembleRelease)
 	if variant != "" {
-		task = task + strings.Title(variant)
+		task = task + cases.Title(language.English, cases.NoLower).String(variant)
 	}
 
 	// If module is not defined, Gradle will execute the task on all modules in the project
