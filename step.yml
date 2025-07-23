@@ -122,19 +122,6 @@ inputs:
       **Note**<br/>
       The Step will export only the selected artifact type even if the filter would accept other artifact types as well.
     is_required: true
-- cache_level: only_deps
-  opts:
-    category: Options
-    title: Set the level of cache
-    description: |-
-      `all` - The Step will cache build cache and the dependencies
-      `only_deps` - The Step will cache dependencies only
-      `none` - The Step will not cache anything
-    is_required: true
-    value_options:
-    - all
-    - only_deps
-    - none
 - arguments:
   opts:
     category: Options

@@ -38,7 +38,5 @@ func run() int {
 		return 1
 	}
 
-	androidBuild.CollectCache(config)
-
 	return 0
 }

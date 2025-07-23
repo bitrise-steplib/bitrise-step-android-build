@@ -7,9 +7,7 @@ import (
 	"strings"
 	"time"
 
-	androidcache "github.com/bitrise-io/go-android/cache"
 	"github.com/bitrise-io/go-android/gradle"
-	"github.com/bitrise-io/go-steputils/cache"
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-steputils/tools"
 	"github.com/bitrise-io/go-utils/command"
@@ -28,7 +26,7 @@ type Input struct {
 	Module          string `env:"module"`
 	BuildType       string `env:"build_type,opt[apk,aab]"`
 	Arguments       string `env:"arguments"`
-	CacheLevel      string `env:"cache_level,opt[none,only_deps,all]"`
+	CacheLevel      string `env:"cache_level"` // Deprecated
 	DeployDir       string `env:"BITRISE_DEPLOY_DIR,dir"`
 }
 
@@ -43,8 +41,7 @@ type Config struct {
 	AppType        string
 	Arguments      []string
 
-	CacheLevel cache.Level
-	DeployDir  string
+	DeployDir string
 }
 
 // Result ...
@@ -99,6 +96,10 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 		return Config{}, fmt.Errorf("failed to parse arguments: %s", err)
 	}
 
+	if input.CacheLevel != "" {
+		a.logger.Warnf("The cache_level Input (branch-based legacy caching) is deprecated, please use dedicated Key-based caching Steps instead.")
+	}
+
 	return Config{
 		ProjectLocation: input.ProjectLocation,
 		AppPathPattern:  input.AppPathPattern,
@@ -106,7 +107,6 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 		Module:          input.Module,
 		AppType:         input.BuildType,
 		Arguments:       args,
-		CacheLevel:      cache.Level(input.CacheLevel),
 		DeployDir:       input.DeployDir,
 	}, nil
 }
@@ -233,16 +233,6 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
 	return nil
-}
-
-// CollectCache ...
-func (a AndroidBuild) CollectCache(cfg Config) {
-	a.logger.Println()
-	a.logger.Infof("Collecting cache:")
-	if warning := androidcache.Collect(cfg.ProjectLocation, cfg.CacheLevel, a.cmdFactory); warning != nil {
-		a.logger.Warnf("%s", warning)
-	}
-	a.logger.Donef("Done")
 }
 
 func gradleTaskName(appType, module, variant string) (string, error) {
