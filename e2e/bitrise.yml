@@ -177,8 +177,9 @@ workflows:
         - clone_into_dir: .
         - branch: $BRANCH
     - set-java-version@1:
+        run_if: $.IsCI
         inputs:
-        - java-version: $JDK_VERSION
+        - set_java_version: $JDK_VERSION
 
   _check_apk:
     steps:
