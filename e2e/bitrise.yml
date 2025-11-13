@@ -95,7 +95,7 @@ workflows:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
     - BRANCH: maintenance
     - EXPECTED_APK: IdlingResourceSample-app-debug.apk
-    - JDK_VERSION: "17"
+    - JDK_VERSION: "11"
     before_run:
     - _setup
     after_run:
@@ -140,7 +140,7 @@ workflows:
     - TEST_APP_URL: https://github.com/bitrise-io/android-testing.git
     - BRANCH: maintenance
     - EXPECTED_AAB: IdlingResourceSample-app-debug.aab
-    - JDK_VERSION: "17"
+    - JDK_VERSION: "11"
     before_run:
     - _setup
     after_run:
