@@ -7,7 +7,7 @@ workflows:
     title: Test simple Android project with nested application module
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: update-target-sdk-2
+    - BRANCH: maintenance
     - EXPECTED_APK: nested_app-release-unsigned.apk
     - EXPECTED_MAPPING: app-mapping.txt
     - JDK_VERSION: "17"
@@ -30,7 +30,7 @@ workflows:
     title: Test building multiple variants
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: update-target-sdk-2
+    - BRANCH: maintenance
     - EXPECTED_APK: another_app-full-release-unsigned.apk
     - EXPECTED_APK_PATH_LIST: $BITRISE_DEPLOY_DIR/another_app-demo-release-unsigned.apk|$BITRISE_DEPLOY_DIR/another_app-full-release-unsigned.apk
     - EXPECTED_MAPPING: another_app-mapping.txt
@@ -69,7 +69,7 @@ workflows:
     title: Test simple Android project and APK building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: update-target-sdk-2
+    - BRANCH: maintenance
     - EXPECTED_APK: another_app-demo-release-unsigned.apk
     - EXPECTED_MAPPING: another_app-mapping.txt
     - JDK_VERSION: "17"
@@ -114,7 +114,7 @@ workflows:
     title: Test simple Android project and AAB building
     envs:
     - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
-    - BRANCH: update-target-sdk-2
+    - BRANCH: maintenance
     - EXPECTED_AAB: another_app-demo-release.aab
     - EXPECTED_MAPPING: another_app-mapping.txt
     - JDK_VERSION: "17"
