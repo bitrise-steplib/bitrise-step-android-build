@@ -61,6 +61,10 @@ host_os_tags:
 
 project_type_tags:
 - android
+- cordova
+- flutter
+- ionic
+- kotlin-multiplatform
 - react-native
 
 type_tags:
