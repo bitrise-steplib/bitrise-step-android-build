@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -32,12 +33,12 @@ func installStub(t *testing.T, dir string, specs []stubSpec) string {
 			// Use absolute path — tests constrain PATH to the stub dir, so
 			// `sleep` from /bin wouldn't be resolvable otherwise.
 			script += "if [ " + s.match + " ]; then\n"
-			script += "  /bin/sleep " + itoa(s.sleep) + "\n"
-			script += "  exit " + itoa(s.exitCode) + "\n"
+			script += "  /bin/sleep " + strconv.Itoa(s.sleep) + "\n"
+			script += "  exit " + strconv.Itoa(s.exitCode) + "\n"
 			script += "fi\n"
 			continue
 		}
-		script += "if [ " + s.match + " ]; then exit " + itoa(s.exitCode) + "; fi\n"
+		script += "if [ " + s.match + " ]; then exit " + strconv.Itoa(s.exitCode) + "; fi\n"
 	}
 	script += `echo "unexpected args: $*" >&2` + "\n"
 	script += "exit 127\n"
@@ -48,26 +49,6 @@ func installStub(t *testing.T, dir string, specs []stubSpec) string {
 	}
 
 	return path
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var b []byte
-	for n > 0 {
-		b = append([]byte{byte('0' + n%10)}, b...)
-		n /= 10
-	}
-	if neg {
-		b = append([]byte{'-'}, b...)
-	}
-
-	return string(b)
 }
 
 func TestDetect_NoCLIOnPath(t *testing.T) {
