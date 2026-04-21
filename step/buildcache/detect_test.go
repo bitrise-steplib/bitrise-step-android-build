@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"testing"
 	"time"
 
@@ -13,36 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// stubSpec describes one branch of the shell-script stub. The script matches
-// argv against `match` (a literal shell test expression) and exits with
-// `exitCode`. Any argv that doesn't match a spec prints to stderr and exits
-// 127 — the stub never silently returns a non-0/1 code, so accidental new
-// subprocess calls fail loudly instead of being absorbed as "probe failure".
-type stubSpec struct {
-	match    string // e.g. `"$1" = "status"`
-	exitCode int
-	sleep    int // seconds, 0 = no sleep
-}
-
-func installStub(t *testing.T, dir string, specs []stubSpec) string {
+func installStub(t *testing.T, dir, script string) string {
 	t.Helper()
-
-	script := "#!/bin/sh\n"
-	for _, s := range specs {
-		if s.sleep > 0 {
-			// Use absolute path — tests constrain PATH to the stub dir, so
-			// `sleep` from /bin wouldn't be resolvable otherwise.
-			script += "if [ " + s.match + " ]; then\n"
-			script += "  /bin/sleep " + strconv.Itoa(s.sleep) + "\n"
-			script += "  exit " + strconv.Itoa(s.exitCode) + "\n"
-			script += "fi\n"
-			continue
-		}
-		script += "if [ " + s.match + " ]; then exit " + strconv.Itoa(s.exitCode) + "; fi\n"
-	}
-	script += `echo "unexpected args: $*" >&2` + "\n"
-	script += "exit 127\n"
-
 	path := filepath.Join(dir, "bitrise-build-cache")
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub script: %v", err)
@@ -66,9 +37,13 @@ func TestDetect_Enabled(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	stubPath := installStub(t, dir, []stubSpec{
-		{match: `"$1" = "status" -a "$2" = "--feature=react-native" -a "$3" = "--quiet"`, exitCode: 0},
-	})
+	stubPath := installStub(t, dir, `#!/bin/sh
+if [ "$1" = "status" ] && [ "$2" = "--feature=react-native" ] && [ "$3" = "--quiet" ]; then
+  exit 0
+fi
+echo "unexpected args: $*" >&2
+exit 127
+`)
 	t.Setenv("PATH", dir)
 
 	got := Detect(context.Background(), log.NewLogger())
@@ -83,9 +58,13 @@ func TestDetect_Disabled(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	stubPath := installStub(t, dir, []stubSpec{
-		{match: `"$1" = "status"`, exitCode: 1},
-	})
+	stubPath := installStub(t, dir, `#!/bin/sh
+if [ "$1" = "status" ]; then
+  exit 1
+fi
+echo "unexpected args: $*" >&2
+exit 127
+`)
 	t.Setenv("PATH", dir)
 
 	got := Detect(context.Background(), log.NewLogger())
@@ -100,10 +79,14 @@ func TestDetect_StatusFailsUnexpectedly(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	stubPath := installStub(t, dir, []stubSpec{
-		// neither 0 (enabled) nor 1 (disabled) → probe failure
-		{match: `"$1" = "status"`, exitCode: 7},
-	})
+	stubPath := installStub(t, dir, `#!/bin/sh
+# neither 0 (enabled) nor 1 (disabled) → probe failure
+if [ "$1" = "status" ]; then
+  exit 7
+fi
+echo "unexpected args: $*" >&2
+exit 127
+`)
 	t.Setenv("PATH", dir)
 
 	got := Detect(context.Background(), log.NewLogger())
@@ -123,10 +106,14 @@ func TestDetect_OldCLIWithoutStatusSubcommand(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	stubPath := installStub(t, dir, []stubSpec{
-		// cobra's "unknown command" exit code is 1
-		{match: `"$1" = "status"`, exitCode: 1},
-	})
+	stubPath := installStub(t, dir, `#!/bin/sh
+# Cobra's "unknown command" exit code is 1.
+if [ "$1" = "status" ]; then
+  exit 1
+fi
+echo "unexpected args: $*" >&2
+exit 127
+`)
 	t.Setenv("PATH", dir)
 
 	got := Detect(context.Background(), log.NewLogger())
@@ -146,10 +133,16 @@ func TestDetect_StatusTimeout(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	stubPath := installStub(t, dir, []stubSpec{
-		// sleep longer than statusTimeout so ctx cancel fires
-		{match: `"$1" = "status"`, exitCode: 0, sleep: 30},
-	})
+	// /bin/sleep absolute path — tests set PATH to stub dir only, so external
+	// sleep wouldn't be resolvable otherwise.
+	stubPath := installStub(t, dir, `#!/bin/sh
+if [ "$1" = "status" ]; then
+  /bin/sleep 30
+  exit 0
+fi
+echo "unexpected args: $*" >&2
+exit 127
+`)
 	t.Setenv("PATH", dir)
 
 	started := time.Now()
@@ -171,9 +164,13 @@ func TestDetect_OptOut(t *testing.T) {
 	dir := t.TempDir()
 	// Stub would report "enabled" if invoked — opt-out env var must short-circuit
 	// before the subprocess spawn.
-	installStub(t, dir, []stubSpec{
-		{match: `"$1" = "status"`, exitCode: 0},
-	})
+	installStub(t, dir, `#!/bin/sh
+if [ "$1" = "status" ]; then
+  exit 0
+fi
+echo "unexpected args: $*" >&2
+exit 127
+`)
 	t.Setenv("PATH", dir)
 	t.Setenv(OptOutEnv, "0")
 
