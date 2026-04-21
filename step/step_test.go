@@ -1,6 +1,10 @@
 package step
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,6 +78,45 @@ func createStep() AndroidBuild {
 		logger:      log.NewLogger(),
 		cmdFactory:  command.NewFactory(envRepository),
 	}
+}
+
+func Test_buildGradleCommand_NoWrapWhenCLIMissing(t *testing.T) {
+	// PATH pointing at empty dir → no CLI found → no wrap.
+	t.Setenv("PATH", t.TempDir())
+
+	step := createStep()
+	cmd := step.buildGradleCommand("/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
+
+	printed := cmd.PrintableCommandArgs()
+	assert.Contains(t, printed, "gradlew")
+	assert.NotContains(t, printed, "bitrise-build-cache")
+}
+
+func Test_buildGradleCommand_WrapsWhenRNCacheEnabled(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script stub isn't portable to windows")
+	}
+
+	dir := t.TempDir()
+	stub := filepath.Join(dir, "bitrise-build-cache")
+	err := os.WriteFile(stub, []byte(`#!/bin/sh
+# --version → exit 0; status --feature=react-native --quiet → exit 0 (enabled)
+[ "$1" = "--version" ] && exit 0
+[ "$1" = "status" ] && exit 0
+exit 99
+`), 0o755)
+	assert.NoError(t, err)
+	t.Setenv("PATH", dir)
+
+	step := createStep()
+	cmd := step.buildGradleCommand("/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
+
+	printed := cmd.PrintableCommandArgs()
+	assert.Contains(t, printed, "bitrise-build-cache")
+	assert.Contains(t, printed, "react-native")
+	assert.Contains(t, printed, "run")
+	assert.Contains(t, printed, "gradlew")
+	assert.True(t, strings.Contains(printed, "assembleDebug"), "gradle args preserved after wrap")
 }
 
 func Test_gradleTaskName(t *testing.T) {

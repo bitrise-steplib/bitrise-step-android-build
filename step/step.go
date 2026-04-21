@@ -1,6 +1,7 @@
 package step
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-steplib/bitrise-step-android-build/step/buildcache"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -308,7 +310,9 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	cmd := a.cmdFactory.Create(filepath.Join(absPath, "gradlew"), cmdArgs, &cmdOpts)
+	gradlewPath := filepath.Join(absPath, "gradlew")
+
+	cmd := a.buildGradleCommand(gradlewPath, cmdArgs, &cmdOpts)
 
 	a.logger.Println()
 	a.logger.Donef("$ " + cmd.PrintableCommandArgs())
@@ -319,6 +323,24 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	}
 
 	return nil
+}
+
+// buildGradleCommand constructs the gradle invocation, transparently wrapping
+// it in `bitrise-build-cache react-native run --` when the Bitrise Build Cache
+// CLI is installed and React Native build cache is active on this machine.
+// When no wrap is needed (CLI absent, probe failed, or RN cache not activated),
+// the original `gradlew ...` command is returned unchanged.
+func (a AndroidBuild) buildGradleCommand(gradlewPath string, cmdArgs []string, cmdOpts *command.Opts) command.Command {
+	det := buildcache.Detect(context.Background(), a.logger)
+	if !det.ReactNativeEnabled {
+		return a.cmdFactory.Create(gradlewPath, cmdArgs, cmdOpts)
+	}
+
+	a.logger.Infof("Bitrise Build Cache: React Native cache active — wrapping gradle with %s", det.CLIPath)
+
+	wrapped := append([]string{"react-native", "run", "--", gradlewPath}, cmdArgs...)
+
+	return a.cmdFactory.Create(det.CLIPath, wrapped, cmdOpts)
 }
 
 func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
