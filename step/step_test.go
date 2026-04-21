@@ -1,6 +1,8 @@
 package step
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/env"
 	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-steplib/bitrise-step-android-build/step/buildcache"
 	"github.com/bitrise-steplib/bitrise-step-android-build/step/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -73,7 +76,47 @@ func createStep() AndroidBuild {
 		inputParser: stepconf.NewInputParser(envRepository),
 		logger:      log.NewLogger(),
 		cmdFactory:  command.NewFactory(envRepository),
+		detect: func(context.Context, log.Logger) buildcache.Detection {
+			return buildcache.Detection{}
+		},
 	}
+}
+
+func Test_buildGradleCommand_NoWrapWhenCLIMissing(t *testing.T) {
+	step := createStep()
+	step.detect = func(context.Context, log.Logger) buildcache.Detection {
+		return buildcache.Detection{}
+	}
+
+	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
+
+	assert.Equal(t, `/tmp/proj/gradlew "assembleDebug"`, cmd.PrintableCommandArgs())
+}
+
+func Test_buildGradleCommand_NoWrapWhenDetected_NotEnabled(t *testing.T) {
+	// CLI present but RN cache not active → still no wrap.
+	step := createStep()
+	step.detect = func(context.Context, log.Logger) buildcache.Detection {
+		return buildcache.Detection{CLIPath: "/usr/local/bin/bitrise-build-cache"}
+	}
+
+	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
+
+	assert.Equal(t, `/tmp/proj/gradlew "assembleDebug"`, cmd.PrintableCommandArgs())
+}
+
+func Test_buildGradleCommand_WrapsWhenRNCacheEnabled(t *testing.T) {
+	cliPath := "/usr/local/bin/bitrise-build-cache"
+
+	step := createStep()
+	step.detect = func(context.Context, log.Logger) buildcache.Detection {
+		return buildcache.Detection{CLIPath: cliPath, ReactNativeEnabled: true}
+	}
+
+	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug", "--info"}, &command.Opts{})
+
+	expected := fmt.Sprintf(`%s "react-native" "run" "--" "/tmp/proj/gradlew" "assembleDebug" "--info"`, cliPath)
+	assert.Equal(t, expected, cmd.PrintableCommandArgs())
 }
 
 func Test_gradleTaskName(t *testing.T) {
