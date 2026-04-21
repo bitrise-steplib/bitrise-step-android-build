@@ -58,6 +58,7 @@ type AndroidBuild struct {
 	inputParser stepconf.InputParser
 	logger      log.Logger
 	cmdFactory  command.Factory
+	detect      func(context.Context, log.Logger) buildcache.Detection
 }
 
 // GradleProjectWrapper ...
@@ -81,7 +82,12 @@ const (
 
 // NewAndroidBuild ...
 func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
-	return &AndroidBuild{inputParser: inputParser, logger: logger, cmdFactory: cmdFactory}
+	return &AndroidBuild{
+		inputParser: inputParser,
+		logger:      logger,
+		cmdFactory:  cmdFactory,
+		detect:      buildcache.Detect,
+	}
 }
 
 // ProcessConfig ...
@@ -122,7 +128,7 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 
 	started := time.Now()
 
-	if err := a.executeGradleBuild(cfg); err != nil {
+	if err := a.executeGradleBuild(context.Background(), cfg); err != nil {
 		return Result{}, err
 	}
 
@@ -288,7 +294,7 @@ func (a AndroidBuild) getArtifacts(gradleProject GradleProjectWrapper, started t
 	return
 }
 
-func (a AndroidBuild) executeGradleBuild(cfg Config) error {
+func (a AndroidBuild) executeGradleBuild(ctx context.Context, cfg Config) error {
 	a.logger.Infof("Run build:")
 
 	var tasks []string
@@ -312,7 +318,7 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 	}
 	gradlewPath := filepath.Join(absPath, "gradlew")
 
-	cmd := a.buildGradleCommand(gradlewPath, cmdArgs, &cmdOpts)
+	cmd := a.buildGradleCommand(ctx, gradlewPath, cmdArgs, &cmdOpts)
 
 	a.logger.Println()
 	a.logger.Donef("$ " + cmd.PrintableCommandArgs())
@@ -330,9 +336,11 @@ func (a AndroidBuild) executeGradleBuild(cfg Config) error {
 // CLI is installed and React Native build cache is active on this machine.
 // When no wrap is needed (CLI absent, probe failed, or RN cache not activated),
 // the original `gradlew ...` command is returned unchanged.
-func (a AndroidBuild) buildGradleCommand(gradlewPath string, cmdArgs []string, cmdOpts *command.Opts) command.Command {
-	det := buildcache.Detect(context.Background(), a.logger)
+func (a AndroidBuild) buildGradleCommand(ctx context.Context, gradlewPath string, cmdArgs []string, cmdOpts *command.Opts) command.Command {
+	det := a.detect(ctx, a.logger)
 	if !det.ReactNativeEnabled {
+		a.logger.Debugf("Bitrise Build Cache: no RN wrap (cli=%v enabled=%v)", det.CLIPath != "", det.ReactNativeEnabled)
+
 		return a.cmdFactory.Create(gradlewPath, cmdArgs, cmdOpts)
 	}
 

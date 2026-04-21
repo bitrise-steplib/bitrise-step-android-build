@@ -7,6 +7,7 @@ package buildcache
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"time"
 
@@ -16,8 +17,12 @@ import (
 const (
 	cliBinary = "bitrise-build-cache"
 
-	lookupTimeout  = 2 * time.Second
-	statusTimeout  = 5 * time.Second
+	statusTimeout = 5 * time.Second
+
+	// OptOutEnv, when set to "0", skips detection entirely and forces the step
+	// to behave as if the CLI were absent. Killswitch for operators if the
+	// wrapper ever ships a regression.
+	OptOutEnv = "BITRISE_BUILD_CACHE_RN_WRAP"
 )
 
 // Detection describes the CLI's reachability and RN-cache activation state on
@@ -32,14 +37,12 @@ type Detection struct {
 // degrades to a zero-value Detection with a warn log — this function must
 // never cause the step to fail.
 func Detect(ctx context.Context, logger log.Logger) Detection {
-	path, err := exec.LookPath(cliBinary)
-	if err != nil {
+	if os.Getenv(OptOutEnv) == "0" {
 		return Detection{}
 	}
 
-	if err := probeCLI(ctx, path); err != nil {
-		logger.Warnf("Bitrise Build Cache CLI found at %s but --version failed: %s. Skipping RN cache wrap.", path, err)
-
+	path, err := exec.LookPath(cliBinary)
+	if err != nil {
 		return Detection{}
 	}
 
@@ -54,18 +57,6 @@ func Detect(ctx context.Context, logger log.Logger) Detection {
 		CLIPath:            path,
 		ReactNativeEnabled: enabled,
 	}
-}
-
-func probeCLI(ctx context.Context, path string) error {
-	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, path, "--version")
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // queryRNEnabled calls `<cli> status --feature=react-native --quiet`. Exit 0
