@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitrise-io/bitrise-build-cache-cli/v2/pkg/reactnative/wrap"
 	"github.com/bitrise-io/go-android/gradle"
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-steputils/tools"
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
-	"github.com/bitrise-steplib/bitrise-step-android-build/step/buildcache"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -58,7 +58,7 @@ type AndroidBuild struct {
 	inputParser stepconf.InputParser
 	logger      log.Logger
 	cmdFactory  command.Factory
-	detect      func(context.Context, log.Logger) buildcache.Detection
+	detect      func(context.Context, log.Logger) wrap.Detection
 }
 
 // GradleProjectWrapper ...
@@ -86,7 +86,7 @@ func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFac
 		inputParser: inputParser,
 		logger:      logger,
 		cmdFactory:  cmdFactory,
-		detect:      buildcache.Detect,
+		detect:      defaultDetect,
 	}
 }
 
@@ -331,6 +331,13 @@ func (a AndroidBuild) executeGradleBuild(ctx context.Context, cfg Config) error 
 	return nil
 }
 
+// defaultDetect adapts wrap.Detect into the (ctx, logger) signature this
+// step's `detect` field uses. Tests inject their own function to bypass real
+// PATH/exec lookups.
+func defaultDetect(ctx context.Context, logger log.Logger) wrap.Detection {
+	return wrap.Detect(ctx, wrap.DetectParams{Logger: logger})
+}
+
 // buildGradleCommand constructs the gradle invocation, transparently wrapping
 // it in `bitrise-build-cache react-native run --` when the Bitrise Build Cache
 // CLI is installed and React Native build cache is active on this machine.
@@ -338,17 +345,13 @@ func (a AndroidBuild) executeGradleBuild(ctx context.Context, cfg Config) error 
 // the original `gradlew ...` command is returned unchanged.
 func (a AndroidBuild) buildGradleCommand(ctx context.Context, gradlewPath string, cmdArgs []string, cmdOpts *command.Opts) command.Command {
 	det := a.detect(ctx, a.logger)
-	if !det.ReactNativeEnabled {
-		a.logger.Debugf("Bitrise Build Cache: no RN wrap (cli=%v enabled=%v)", det.CLIPath != "", det.ReactNativeEnabled)
-
-		return a.cmdFactory.Create(gradlewPath, cmdArgs, cmdOpts)
+	if det.ReactNativeEnabled {
+		a.logger.Infof("Bitrise Build Cache: React Native cache active — wrapping gradle with %s", det.CLIPath)
 	}
 
-	a.logger.Infof("Bitrise Build Cache: React Native cache active — wrapping gradle with %s", det.CLIPath)
+	name, args := wrap.Wrap(det, gradlewPath, cmdArgs)
 
-	wrapped := append([]string{"react-native", "run", "--", gradlewPath}, cmdArgs...)
-
-	return a.cmdFactory.Create(det.CLIPath, wrapped, cmdOpts)
+	return a.cmdFactory.Create(name, args, cmdOpts)
 }
 
 func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
