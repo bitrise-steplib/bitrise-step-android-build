@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bitrise-io/go-utils/env"
-	"github.com/bitrise-io/go-utils/parseutil"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/parseutil"
 )
 
 const (
@@ -86,7 +86,7 @@ func setField(field reflect.Value, value, constraint string) error {
 		field = field.Elem()
 	}
 
-	switch field.Kind() {
+	switch field.Kind() { //nolint:exhaustive
 	case reflect.String:
 		field.SetString(value)
 	case reflect.Bool:
@@ -99,6 +99,12 @@ func setField(field reflect.Value, value, constraint string) error {
 		n, err := strconv.ParseInt(value, 10, 32)
 		if err != nil {
 			return errors.New("can't convert to int")
+		}
+		field.SetInt(n)
+	case reflect.Int64:
+		n, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return errors.New("can't convert to int64")
 		}
 		field.SetInt(n)
 	case reflect.Float64:
@@ -133,7 +139,7 @@ func validateConstraint(value, constraint string) error {
 			return err
 		}
 	// TODO: use FindStringSubmatch to distinguish no match and match for empty string.
-	case regexp.MustCompile(`^opt\[.*\]$`).FindString(constraint):
+	case regexp.MustCompile(`^opt\[.*]$`).FindString(constraint):
 		if !contains(value, constraint) {
 			// TODO: print only the value options, not the whole string.
 			return fmt.Errorf("value is not in value options (%s)", constraint)

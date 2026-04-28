@@ -3,10 +3,12 @@ package main
 import (
 	"os"
 
-	"github.com/bitrise-io/go-steputils/stepconf"
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/env"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-steputils/v2/export"
+	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/fileutil"
+	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/bitrise-steplib/bitrise-step-android-build/step"
 )
 
@@ -19,7 +21,8 @@ func run() int {
 	inputParser := stepconf.NewInputParser(envRepository)
 	logger := log.NewLogger()
 	cmdFactory := command.NewFactory(envRepository)
-	androidBuild := step.NewAndroidBuild(inputParser, logger, cmdFactory)
+	exporter := export.NewExporter(cmdFactory, fileutil.NewFileManager())
+	androidBuild := step.NewAndroidBuild(inputParser, logger, cmdFactory, exporter)
 
 	config, err := androidBuild.ProcessConfig()
 	if err != nil {

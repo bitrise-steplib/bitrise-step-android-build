@@ -1,24 +1,24 @@
 package stepconf
 
-import "github.com/bitrise-io/go-utils/env"
+import "github.com/bitrise-io/go-utils/v2/env"
 
 // InputParser ...
 type InputParser interface {
 	Parse(input interface{}) error
 }
 
-type defaultInputParser struct {
+type inputParser struct {
 	envRepository env.Repository
 }
 
 // NewInputParser ...
 func NewInputParser(envRepository env.Repository) InputParser {
-	return defaultInputParser{
+	return inputParser{
 		envRepository: envRepository,
 	}
 }
 
 // Parse ...
-func (p defaultInputParser) Parse(input interface{}) error {
+func (p inputParser) Parse(input interface{}) error {
 	return parse(input, p.envRepository)
 }

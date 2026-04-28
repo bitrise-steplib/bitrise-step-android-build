@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/bitrise-io/bitrise-build-cache-cli/v2/pkg/reactnative/wrap"
-	"github.com/bitrise-io/go-android/gradle"
-	"github.com/bitrise-io/go-steputils/stepconf"
-	"github.com/bitrise-io/go-steputils/tools"
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-io/go-android/v2/gradle"
+	"github.com/bitrise-io/go-steputils/v2/export"
+	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/log"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/kballard/go-shellquote"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -58,6 +58,8 @@ type AndroidBuild struct {
 	inputParser stepconf.InputParser
 	logger      log.Logger
 	cmdFactory  command.Factory
+	exporter    export.Exporter
+	pathChecker pathutil.PathChecker
 	detect      func(context.Context, log.Logger) wrap.Detection
 }
 
@@ -81,11 +83,13 @@ const (
 )
 
 // NewAndroidBuild ...
-func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFactory command.Factory) *AndroidBuild {
+func NewAndroidBuild(inputParser stepconf.InputParser, logger log.Logger, cmdFactory command.Factory, exporter export.Exporter) *AndroidBuild {
 	return &AndroidBuild{
 		inputParser: inputParser,
 		logger:      logger,
 		cmdFactory:  cmdFactory,
+		exporter:    exporter,
+		pathChecker: pathutil.NewPathChecker(),
 		detect:      defaultDetect,
 	}
 }
@@ -121,7 +125,7 @@ func (a AndroidBuild) ProcessConfig() (Config, error) {
 
 // Run ...
 func (a AndroidBuild) Run(cfg Config) (Result, error) {
-	gradleProject, err := gradle.NewProject(cfg.ProjectLocation, a.cmdFactory)
+	gradleProject, err := gradle.NewProject(cfg.ProjectLocation, a.cmdFactory, a.logger)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to open Gradle project: %s", err)
 	}
@@ -189,7 +193,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	} else {
 		envKey = aabEnvKey
 	}
-	if err := tools.ExportEnvironmentWithEnvman(envKey, lastExportedArtifact); err != nil {
+	if err := a.exporter.ExportOutput(envKey, lastExportedArtifact); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", envKey)
 	}
 	a.logger.Println()
@@ -207,7 +211,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	} else {
 		envKey = aabListEnvKey
 	}
-	if err := tools.ExportEnvironmentWithEnvman(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
+	if err := a.exporter.ExportOutput(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", envKey)
 	}
 	a.logger.Printf("  Env    [ $%s = %s ]", envKey, paths)
@@ -235,7 +239,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	lastExportedArtifact = exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	a.logger.Println()
-	if err := tools.ExportEnvironmentWithEnvman(mappingFileEnvKey, lastExportedArtifact); err != nil {
+	if err := a.exporter.ExportOutput(mappingFileEnvKey, lastExportedArtifact); err != nil {
 		return fmt.Errorf("failed to export environment variable: %s", mappingFileEnvKey)
 	}
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
@@ -371,7 +375,7 @@ func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPath
 func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
 	var paths []string
 	for _, artifact := range artifacts {
-		exists, err := pathutil.IsPathExists(filepath.Join(deployDir, artifact.Name))
+		exists, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, artifact.Name))
 		if err != nil {
 			return nil, fmt.Errorf("failed to check path, error: %v", err)
 		}
