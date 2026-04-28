@@ -2,7 +2,6 @@ package gradle
 
 import (
 	"fmt"
-	"github.com/bitrise-io/go-utils/command"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,13 +15,12 @@ import (
 
 // Project ...
 type Project struct {
-	location   string
-	monoRepo   bool
-	cmdFactory command.Factory
+	location string
+	monoRepo bool
 }
 
 // NewProject ...
-func NewProject(location string, cmdFactory command.Factory) (Project, error) {
+func NewProject(location string) (Project, error) {
 	var err error
 	location, err = filepath.Abs(location)
 	if err != nil {
@@ -44,7 +42,7 @@ func NewProject(location string, cmdFactory command.Factory) (Project, error) {
 	}
 
 	if location == "/" {
-		return Project{location: location, monoRepo: false, cmdFactory: cmdFactory}, nil
+		return Project{location: location, monoRepo: false}, nil
 	}
 
 	root := filepath.Join(location, "..")
@@ -67,7 +65,7 @@ func NewProject(location string, cmdFactory command.Factory) (Project, error) {
 		}
 	}
 
-	return Project{location: location, monoRepo: projectsCount > 1, cmdFactory: cmdFactory}, nil
+	return Project{location: location, monoRepo: (projectsCount > 1)}, nil
 }
 
 // GetTask ...
@@ -87,7 +85,12 @@ func (proj Project) FindArtifacts(generatedAfter time.Time, pattern string, incl
 			return nil
 		}
 
-		if info.ModTime().Before(generatedAfter) || info.IsDir() || !glob.Glob(pattern, path) {
+		if info.IsDir() || !glob.Glob(pattern, path) {
+			return nil
+		}
+
+		if info.ModTime().Before(generatedAfter) {
+			log.Warnf("Ignoring %s because it was created by a previous step based on the file modification time", info.Name())
 			return nil
 		}
 

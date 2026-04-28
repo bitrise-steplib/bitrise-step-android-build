@@ -2,7 +2,6 @@ package gradle
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,10 +16,8 @@ type Task struct {
 
 // GetVariants ...
 func (task *Task) GetVariants(args ...string) (Variants, error) {
-	opts := command.Opts{Dir: task.project.location}
 	args = append([]string{"tasks", "--all", "--console=plain", "--quiet"}, args...)
-	cmd := task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), args, &opts)
-	tasksOutput, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	tasksOutput, err := getGradleOutput(task.project.location, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s, %s", tasksOutput, err)
 	}
@@ -28,8 +25,8 @@ func (task *Task) GetVariants(args ...string) (Variants, error) {
 }
 
 func (task *Task) parseVariants(gradleOutput string) Variants {
-	//example gradleOutput:
-	//"
+	// example gradleOutput:
+	// "
 	// lintMyflavorokStaging - Runs lint on the MyflavorokStaging build.
 	// lintMyflavorRelease - Runs lint on the MyflavorRelease build.
 	// lintVitalMyflavorRelease - Runs lint on the MyflavorRelease build.
@@ -88,17 +85,13 @@ func cleanModuleName(s string) string {
 }
 
 // GetCommand ...
-func (task *Task) GetCommand(v Variants, args ...string) command.Command {
+func (task *Task) GetCommand(v Variants, args ...string) *command.Model {
 	var a []string
 	for module, variants := range v {
 		for _, variant := range variants {
 			a = append(a, cleanModuleName(module)+task.name+variant)
 		}
 	}
-	cmdOpts := command.Opts{
-		Dir:    task.project.location,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	return task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), append(a, args...), &cmdOpts)
+	return command.NewWithStandardOuts(filepath.Join(task.project.location, "gradlew"), append(a, args...)...).
+		SetDir(task.project.location)
 }

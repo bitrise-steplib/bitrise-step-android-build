@@ -5,7 +5,7 @@ package mocks
 import (
 	"time"
 
-	"github.com/bitrise-io/go-android/gradle"
+	"github.com/bitrise-io/go-android/v2/gradle"
 	"github.com/stretchr/testify/mock"
 )
 
