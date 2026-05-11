@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitrise-io/go-android/gradle"
-	"github.com/bitrise-io/go-steputils/stepconf"
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/env"
-	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-steplib/bitrise-step-android-build/step/buildcache"
+	"github.com/bitrise-io/bitrise-build-cache-cli/v2/pkg/reactnative/wrap"
+	"github.com/bitrise-io/go-android/v2/gradle"
+	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/bitrise-steplib/bitrise-step-android-build/step/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -76,16 +76,16 @@ func createStep() AndroidBuild {
 		inputParser: stepconf.NewInputParser(envRepository),
 		logger:      log.NewLogger(),
 		cmdFactory:  command.NewFactory(envRepository),
-		detect: func(context.Context, log.Logger) buildcache.Detection {
-			return buildcache.Detection{}
+		detect: func(context.Context, log.Logger) wrap.Detection {
+			return wrap.Detection{}
 		},
 	}
 }
 
 func Test_buildGradleCommand_NoWrapWhenCLIMissing(t *testing.T) {
 	step := createStep()
-	step.detect = func(context.Context, log.Logger) buildcache.Detection {
-		return buildcache.Detection{}
+	step.detect = func(context.Context, log.Logger) wrap.Detection {
+		return wrap.Detection{}
 	}
 
 	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
@@ -96,8 +96,8 @@ func Test_buildGradleCommand_NoWrapWhenCLIMissing(t *testing.T) {
 func Test_buildGradleCommand_NoWrapWhenDetected_NotEnabled(t *testing.T) {
 	// CLI present but RN cache not active → still no wrap.
 	step := createStep()
-	step.detect = func(context.Context, log.Logger) buildcache.Detection {
-		return buildcache.Detection{CLIPath: "/usr/local/bin/bitrise-build-cache"}
+	step.detect = func(context.Context, log.Logger) wrap.Detection {
+		return wrap.Detection{CLIPath: "/usr/local/bin/bitrise-build-cache"}
 	}
 
 	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
@@ -109,8 +109,8 @@ func Test_buildGradleCommand_WrapsWhenRNCacheEnabled(t *testing.T) {
 	cliPath := "/usr/local/bin/bitrise-build-cache"
 
 	step := createStep()
-	step.detect = func(context.Context, log.Logger) buildcache.Detection {
-		return buildcache.Detection{CLIPath: cliPath, ReactNativeEnabled: true}
+	step.detect = func(context.Context, log.Logger) wrap.Detection {
+		return wrap.Detection{CLIPath: cliPath, ReactNativeEnabled: true}
 	}
 
 	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug", "--info"}, &command.Opts{})
