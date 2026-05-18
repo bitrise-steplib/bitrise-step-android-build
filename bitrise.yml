@@ -1,6 +1,11 @@
 format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
+include:
+- repository: steps-check
+  branch: master
+  path: steps.bitrise.yml
+
 workflows:
   sample:
     steps:
@@ -16,9 +21,7 @@ workflows:
         - variant: debug
         - app_type: aab
 
-  check:
-    steps:
-    - git::https://github.com/bitrise-steplib/steps-check.git: { }
+  # check: included from steps-check/steps.bitrise.yml
 
   e2e:
     steps:

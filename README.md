@@ -7,7 +7,6 @@ Builds your Android project with Gradle.
 <details>
 <summary>Description</summary>
 
-
 The Step builds your Android project on Bitrise with Gradle commands: it installs all dependencies that are listed in the project's `build.gradle` file, and builds and exports either an APK or an AAB.
 Once the file is exported, it is available for other Steps in your Workflow.
 
