@@ -64,27 +64,6 @@ Add this step directly to your workflow in the [Bitrise Workflow Editor](https:/
 
 You can also run this step directly with [Bitrise CLI](https://github.com/bitrise-io/bitrise).
 
-### Examples
-
-Build an APK from the debug variant:
-
-```yaml
-- android-build:
-    inputs:
-    - variant: debug
-    - build_type: apk
-```
-
-Build a release AAB:
-
-```yaml
-- android-build:
-    inputs:
-    - variant: release
-    - build_type: aab
-```
-
-
 ## ⚙️ Configuration
 
 <details>
@@ -110,6 +89,7 @@ Build a release AAB:
 | `BITRISE_AAB_PATH` | This output will include the path of the generated AAB after filtering based on the filter inputs. If the build generates more than one AAB which fulfills the filter inputs, this output will contain the last one's path. |
 | `BITRISE_AAB_PATH_LIST` | This output will include the paths of the generated AABs after filtering based on the filter inputs. The paths are separated with `\|` character, for example, `app--debug.aab\|app-mips-debug.aab` |
 | `BITRISE_MAPPING_PATH` | This output will include the path of the generated mapping.txt. If more than one mapping.txt exist in the project, this output will contain the last one's path. |
+| `BITRISE_MAPPING_PATH_LIST` | This output includes the paths of the generated mapping.txt files, ordered to match the app artifact list (`BITRISE_APK_PATH_LIST` or `BITRISE_AAB_PATH_LIST`, depending on the selected `build_type`) index-by-index. This lets a downstream step (for example, Google Play Deploy) pair each artifact with its mapping file by position.  The paths are separated with the `\|` character. Variants that produced no mapping file (for example, non-minified builds) get an empty entry so positions never shift, for example, `demo-mapping.txt\|\|prod-mapping.txt`. |
 </details>
 
 ## 🙋 Contributing
