@@ -10,6 +10,7 @@ import (
 
 	"github.com/bitrise-io/bitrise-build-cache-cli/v2/pkg/reactnative/wrap"
 	"github.com/bitrise-io/go-android/v2/gradle"
+	"github.com/bitrise-io/go-android/v2/gradle/mappinglist"
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
 	"github.com/bitrise-io/go-utils/v2/command"
@@ -78,8 +79,9 @@ const (
 	aabEnvKey     = "BITRISE_AAB_PATH"
 	aabListEnvKey = "BITRISE_AAB_PATH_LIST"
 
-	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
-	mappingFilePattern = "*build/*/mapping.txt"
+	mappingFileEnvKey     = "BITRISE_MAPPING_PATH"
+	mappingFileListEnvKey = "BITRISE_MAPPING_PATH_LIST"
+	mappingFilePattern    = "*build/*/mapping.txt"
 )
 
 // NewAndroidBuild ...
@@ -175,15 +177,16 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 
 // Export ...
 func (a AndroidBuild) Export(result Result, deployDir string) error {
-	exportedArtifactPaths, err := a.exportArtifacts(result.appFiles, deployDir)
+	exportedApps, err := a.exportArtifacts(result.appFiles, deployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
 
-	if len(exportedArtifactPaths) == 0 {
+	if len(exportedApps) == 0 {
 		return fmt.Errorf("could not export any app artifacts")
 	}
 
+	exportedArtifactPaths := exportedDeployPaths(exportedApps)
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	// Use the correct env key for the selected build type
@@ -227,16 +230,17 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 		return nil
 	}
 
-	exportedArtifactPaths, err = a.exportArtifacts(result.mappingFiles, deployDir)
+	exportedMappings, err := a.exportArtifacts(result.mappingFiles, deployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
 
-	if len(exportedArtifactPaths) == 0 {
+	if len(exportedMappings) == 0 {
 		return fmt.Errorf("could not export any mapping.txt")
 	}
 
-	lastExportedArtifact = exportedArtifactPaths[len(exportedArtifactPaths)-1]
+	mappingPaths := exportedDeployPaths(exportedMappings)
+	lastExportedArtifact = mappingPaths[len(mappingPaths)-1]
 
 	a.logger.Println()
 	if err := a.exporter.ExportOutput(mappingFileEnvKey, lastExportedArtifact); err != nil {
@@ -244,7 +248,52 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	}
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
+	// Export a mapping list aligned index-by-index with the app list, so a
+	// downstream step (e.g. google-play-deploy) can pair each artifact with its
+	// mapping file by position. Entries are empty for variants that produced no
+	// mapping file, so positions never shift.
+	if mappingList, ok := alignedMappingList(exportedApps, exportedMappings); ok {
+		encoded := mappinglist.Encode(mappingList)
+		if err := a.exporter.ExportOutput(mappingFileListEnvKey, encoded); err != nil {
+			return fmt.Errorf("failed to export environment variable: %s", mappingFileListEnvKey)
+		}
+		a.logger.Printf("  Env    [ $%s = %s ]", mappingFileListEnvKey, encoded)
+	}
+
 	return nil
+}
+
+// alignedMappingList builds a mapping-file list index-aligned with the app
+// list: mappingList[i] is the mapping file for the variant of app[i], or an
+// empty string when that variant produced no mapping. It returns ok=false when
+// no app variant matched any mapping file.
+func alignedMappingList(apps, mappings []exportedArtifact) ([]string, bool) {
+	mappingByVariant := map[gradle.ArtifactVariant]string{}
+	for _, m := range mappings {
+		if key, ok := gradle.VariantFromPath(m.sourcePath); ok {
+			if _, exists := mappingByVariant[key]; !exists {
+				mappingByVariant[key] = m.deployPath
+			}
+		}
+	}
+	if len(mappingByVariant) == 0 {
+		return nil, false
+	}
+
+	list := make([]string, len(apps))
+	matched := 0
+	for i, app := range apps {
+		if key, ok := gradle.VariantFromPath(app.sourcePath); ok {
+			if mappingPath, found := mappingByVariant[key]; found {
+				list[i] = mappingPath
+				matched++
+			}
+		}
+	}
+	if matched == 0 {
+		return nil, false
+	}
+	return list, true
 }
 
 func gradleTaskName(appType, module, variant string) (string, error) {
@@ -372,8 +421,24 @@ func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPath
 	a.logger.Println()
 }
 
-func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
-	var paths []string
+// exportedArtifact is an artifact copied into the deploy dir, paired with the
+// source path it was built from (so its build variant can be inferred even
+// though the deploy path is flat).
+type exportedArtifact struct {
+	deployPath string
+	sourcePath string
+}
+
+func exportedDeployPaths(artifacts []exportedArtifact) []string {
+	paths := make([]string, len(artifacts))
+	for i, a := range artifacts {
+		paths[i] = a.deployPath
+	}
+	return paths
+}
+
+func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]exportedArtifact, error) {
+	var exported []exportedArtifact
 	for _, artifact := range artifacts {
 		exists, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, artifact.Name))
 		if err != nil {
@@ -396,9 +461,12 @@ func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir str
 			continue
 		}
 
-		paths = append(paths, filepath.Join(deployDir, artifact.Name))
+		exported = append(exported, exportedArtifact{
+			deployPath: filepath.Join(deployDir, artifact.Name),
+			sourcePath: artifact.Path,
+		})
 	}
-	return paths, nil
+	return exported, nil
 }
 
 // parseVariants returns the list of variants from the raw step input string.

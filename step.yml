@@ -175,3 +175,17 @@ outputs:
     description: |-
       This output will include the path of the generated mapping.txt.
       If more than one mapping.txt exist in the project, this output will contain the last one's path.
+- BITRISE_MAPPING_PATH_LIST:
+  opts:
+    title: List of the generated mapping.txt paths
+    summary: List of mapping.txt paths, aligned index-by-index with the app list.
+    description: |-
+      This output includes the paths of the generated mapping.txt files, ordered to
+      match the app artifact list (`BITRISE_APK_PATH_LIST` or `BITRISE_AAB_PATH_LIST`,
+      depending on the selected `build_type`) index-by-index. This lets a downstream
+      step (for example, Google Play Deploy) pair each artifact with its mapping file
+      by position.
+
+      The paths are separated with the `|` character. Variants that produced no mapping
+      file (for example, non-minified builds) get an empty entry so positions never
+      shift, for example, `demo-mapping.txt||prod-mapping.txt`.
