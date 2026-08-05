@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/bitrise-io/bitrise-build-cache-cli/v2 v2.6.0
-	github.com/bitrise-io/go-android/v2 v2.0.0-alpha.16
+	github.com/bitrise-io/go-android/v2 v2.0.0-alpha.16.0.20260805142037-07bd8c674a5e
 	github.com/bitrise-io/go-steputils/v2 v2.0.0-alpha.50
 	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.34
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51

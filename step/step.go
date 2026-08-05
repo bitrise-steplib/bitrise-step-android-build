@@ -10,6 +10,7 @@ import (
 
 	"github.com/bitrise-io/bitrise-build-cache-cli/v2/pkg/reactnative/wrap"
 	"github.com/bitrise-io/go-android/v2/gradle"
+	"github.com/bitrise-io/go-android/v2/gradle/artifactmap"
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
 	"github.com/bitrise-io/go-utils/v2/command"
@@ -175,15 +176,16 @@ func (a AndroidBuild) Run(cfg Config) (Result, error) {
 
 // Export ...
 func (a AndroidBuild) Export(result Result, deployDir string) error {
-	exportedArtifactPaths, err := a.exportArtifacts(result.appFiles, deployDir)
+	exportedApps, err := a.exportArtifacts(result.appFiles, deployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
 
-	if len(exportedArtifactPaths) == 0 {
+	if len(exportedApps) == 0 {
 		return fmt.Errorf("could not export any app artifacts")
 	}
 
+	exportedArtifactPaths := deployPaths(exportedApps)
 	lastExportedArtifact := exportedArtifactPaths[len(exportedArtifactPaths)-1]
 
 	// Use the correct env key for the selected build type
@@ -224,19 +226,19 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	if len(result.mappingFiles) == 0 {
 		a.logger.Printf("No mapping files found with pattern: %s", mappingFilePattern)
 		a.logger.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
-		return nil
+		return a.exportArtifactMap(result.appType, exportedApps, nil, deployDir)
 	}
 
-	exportedArtifactPaths, err = a.exportArtifacts(result.mappingFiles, deployDir)
+	exportedMappings, err := a.exportArtifacts(result.mappingFiles, deployDir)
 	if err != nil {
 		return fmt.Errorf("failed to export artifact: %v", err)
 	}
 
-	if len(exportedArtifactPaths) == 0 {
+	if len(exportedMappings) == 0 {
 		return fmt.Errorf("could not export any mapping.txt")
 	}
 
-	lastExportedArtifact = exportedArtifactPaths[len(exportedArtifactPaths)-1]
+	lastExportedArtifact = exportedMappings[len(exportedMappings)-1].deployPath
 
 	a.logger.Println()
 	if err := a.exporter.ExportOutput(mappingFileEnvKey, lastExportedArtifact); err != nil {
@@ -244,7 +246,60 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	}
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
+	return a.exportArtifactMap(result.appType, exportedApps, exportedMappings, deployDir)
+}
+
+// exportArtifactMap writes the variant-keyed artifact map next to the exported
+// files and exports its path as BITRISE_ANDROID_ARTIFACT_MAP_PATH. Unlike the
+// flat outputs above, the map records which APK/AAB and which mapping file
+// belong to the same build variant, so a later step (e.g. Google Play deploy)
+// can pair them by identity instead of export order.
+func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exportedArtifact, deployDir string) error {
+	apkFiles, aabFiles, mappingFiles := artifactMapFiles(appType, apps, mappings)
+
+	artifactMap, warnings := artifactmap.Build(apkFiles, aabFiles, mappingFiles)
+	for _, warning := range warnings {
+		a.logger.Warnf("%s", warning)
+	}
+	if artifactMap.IsEmpty() {
+		return nil
+	}
+
+	// Unlike the copied artifacts, the map is regenerated authoritative
+	// metadata: overwrite any previous map at the fixed name instead of
+	// writing a stale-duplicating renamed copy next to it.
+	mapPath := filepath.Join(deployDir, artifactmap.DefaultFileName)
+
+	if err := artifactmap.Write(mapPath, artifactMap); err != nil {
+		return fmt.Errorf("failed to write the artifact map: %v", err)
+	}
+	if err := a.exporter.ExportOutput(artifactmap.EnvKey, mapPath); err != nil {
+		return fmt.Errorf("failed to export environment variable: %s", artifactmap.EnvKey)
+	}
+	a.logger.Println()
+	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", artifactmap.EnvKey, artifactmap.DefaultFileName)
+
 	return nil
+}
+
+// artifactMapFiles converts the exported artifacts into the artifact map's
+// input form. The step builds a single artifact type per run (build_type), so
+// the app files all land in either the APK or the AAB list. The deploy path
+// carries the exported file's final (collision-safe) name, the source path
+// still encodes the build variant.
+func artifactMapFiles(appType string, apps, mappings []exportedArtifact) (apkFiles, aabFiles, mappingFiles []artifactmap.File) {
+	for _, app := range apps {
+		file := artifactmap.File{DeployPath: app.deployPath, SourcePath: app.artifact.Path}
+		if appType == apkAppType {
+			apkFiles = append(apkFiles, file)
+		} else {
+			aabFiles = append(aabFiles, file)
+		}
+	}
+	for _, mapping := range mappings {
+		mappingFiles = append(mappingFiles, artifactmap.File{DeployPath: mapping.deployPath, SourcePath: mapping.artifact.Path})
+	}
+	return apkFiles, aabFiles, mappingFiles
 }
 
 func gradleTaskName(appType, module, variant string) (string, error) {
@@ -372,8 +427,24 @@ func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPath
 	a.logger.Println()
 }
 
-func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
-	var paths []string
+// exportedArtifact pairs an artifact with the deploy-dir path it was copied
+// to, so later consumers (e.g. the artifact map) can keep relating the copy to
+// the build-output path the artifact came from.
+type exportedArtifact struct {
+	artifact   gradle.Artifact
+	deployPath string
+}
+
+func deployPaths(artifacts []exportedArtifact) []string {
+	paths := make([]string, len(artifacts))
+	for i, artifact := range artifacts {
+		paths[i] = artifact.deployPath
+	}
+	return paths
+}
+
+func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]exportedArtifact, error) {
+	var exported []exportedArtifact
 	for _, artifact := range artifacts {
 		exists, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, artifact.Name))
 		if err != nil {
@@ -396,9 +467,9 @@ func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir str
 			continue
 		}
 
-		paths = append(paths, filepath.Join(deployDir, artifact.Name))
+		exported = append(exported, exportedArtifact{artifact: artifact, deployPath: filepath.Join(deployDir, artifact.Name)})
 	}
-	return paths, nil
+	return exported, nil
 }
 
 // parseVariants returns the list of variants from the raw step input string.

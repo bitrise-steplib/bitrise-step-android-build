@@ -40,6 +40,8 @@ workflows:
     after_run:
     - _check_apk
     - _check_mapping
+    # multiple variants with mappings is the artifact map's flagship scenario
+    - _check_artifact_map
     steps:
     - install-missing-android-tools:
         inputs:
@@ -123,6 +125,7 @@ workflows:
     after_run:
     - _check_aab
     - _check_mapping
+    - _check_artifact_map
     steps:
     - install-missing-android-tools:
         inputs:
@@ -247,3 +250,45 @@ workflows:
               ls -la $BITRISE_DEPLOY_DIR
               exit 1
             fi
+
+  # NOTE: this helper asserts `.variants` is non-empty, so only attach it to
+  # workflows whose build produces variant-attributable artifacts (the standard
+  # build/outputs/{apk,bundle,mapping} layout). A map with only `unmatched`
+  # entries is contract-conformant but would fail this check.
+  _check_artifact_map:
+    steps:
+    - script:
+        title: Check the variant-keyed artifact map output
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            if [ -z "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" ]; then
+              echo "BITRISE_ANDROID_ARTIFACT_MAP_PATH env is empty"
+              exit 1
+            fi
+            if [ ! -f "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" ]; then
+              echo "Artifact map not found at '${BITRISE_ANDROID_ARTIFACT_MAP_PATH}'"
+              exit 1
+            fi
+            echo "--- artifact map ---"
+            cat "$BITRISE_ANDROID_ARTIFACT_MAP_PATH"
+            echo "--------------------"
+
+            jq -e '.version == 1' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+              || { echo "artifact map schema version is not 1"; exit 1; }
+            jq -e '.variants | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+              || { echo "artifact map has no variants"; exit 1; }
+
+            # Every file the map references — variant entries AND unmatched —
+            # must exist next to the map file. read -r keeps file names with
+            # spaces intact.
+            map_dir=$(dirname "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")
+            while IFS= read -r name; do
+              [ -z "$name" ] && continue
+              if [ ! -f "$map_dir/$name" ]; then
+                echo "artifact map references '$name' but it does not exist in $map_dir"
+                exit 1
+              fi
+              echo "artifact map entry exists: $name"
+            done < <(jq -r '(.variants[] | (.mapping // empty), .apk[], .aab[]), (.unmatched | .apk[], .aab[], .mapping[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")
