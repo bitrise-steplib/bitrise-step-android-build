@@ -2,7 +2,9 @@ package step
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,10 +267,20 @@ func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exporte
 		return nil
 	}
 
-	// Unlike the copied artifacts, the map is regenerated authoritative
-	// metadata: overwrite any previous map at the fixed name instead of
-	// writing a stale-duplicating renamed copy next to it.
+	// When an earlier step already wrote a map (several build steps in one
+	// workflow), merge the runs into one document instead of the last one
+	// overwriting the rest.
 	mapPath := filepath.Join(deployDir, artifactmap.DefaultFileName)
+	if existing, err := artifactmap.Read(mapPath); err == nil {
+		merged, mergeWarnings := artifactmap.Merge(existing, artifactMap)
+		for _, warning := range mergeWarnings {
+			a.logger.Warnf("%s", warning)
+		}
+		a.logger.Printf("Merged this build's artifacts into the artifact map written by an earlier step")
+		artifactMap = merged
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		a.logger.Warnf("Existing artifact map at %s is unreadable (%s), replacing it", mapPath, err)
+	}
 
 	if err := artifactmap.Write(mapPath, artifactMap); err != nil {
 		return fmt.Errorf("failed to write the artifact map: %v", err)
@@ -278,6 +290,13 @@ func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exporte
 	}
 	a.logger.Println()
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", artifactmap.EnvKey, artifactmap.DefaultFileName)
+
+	// Print the document so pairing can be debugged from the build log alone,
+	// without downloading the artifact.
+	if doc, err := artifactmap.Marshal(artifactMap); err == nil {
+		a.logger.Printf("Artifact map contents:")
+		a.logger.Printf("%s", strings.TrimSuffix(string(doc), "\n"))
+	}
 
 	return nil
 }

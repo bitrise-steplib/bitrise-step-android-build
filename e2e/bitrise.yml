@@ -67,6 +67,48 @@ workflows:
         - module: another_app
         - variant: fullRelease\ndemoRelease
 
+  test_merged_apk_and_aab:
+    title: Two step runs (apk then aab) merge into one artifact map
+    envs:
+    - TEST_APP_URL: https://github.com/bitrise-io/android-multiple-test-results-sample.git
+    - BRANCH: maintenance
+    - JDK_VERSION: "17"
+    before_run:
+    - _setup
+    steps:
+    - install-missing-android-tools:
+        inputs:
+        - gradlew_path: ./gradlew
+    - path::./:
+        title: First run (apk)
+        inputs:
+        - module: another_app
+        - variant: DemoRelease
+        - build_type: apk
+    - path::./:
+        title: Second run (aab)
+        inputs:
+        - module: another_app
+        - variant: DemoRelease
+        - build_type: aab
+    - script:
+        title: Check the merged artifact map pairs both artifact types
+        is_always_run: true
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            echo "--- artifact map ---"
+            cat "$BITRISE_ANDROID_ARTIFACT_MAP_PATH"
+            echo "--------------------"
+            jq -e '.variants.demoRelease.apk | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+              || { echo "expected the first run's APK in the merged map"; exit 1; }
+            jq -e '.variants.demoRelease.aab | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+              || { echo "expected the second run's AAB in the merged map"; exit 1; }
+            jq -e '.variants.demoRelease.mapping != null and .variants.demoRelease.mapping != ""' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+              || { echo "expected the variant's mapping in the merged map"; exit 1; }
+            echo "merged artifact map pairs apk, aab and mapping for demoRelease"
+
   test_simple_apk:
     title: Test simple Android project and APK building
     envs:
