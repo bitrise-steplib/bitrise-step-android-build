@@ -101,13 +101,14 @@ workflows:
             echo "--- artifact map ---"
             cat "$BITRISE_ANDROID_ARTIFACT_MAP_PATH"
             echo "--------------------"
-            jq -e '.variants.demoRelease.apk | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+            entry='.modules.another_app.demoRelease'
+            jq -e "$entry.apk | length > 0" "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "expected the first run's APK in the merged map"; exit 1; }
-            jq -e '.variants.demoRelease.aab | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+            jq -e "$entry.aab | length > 0" "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "expected the second run's AAB in the merged map"; exit 1; }
-            jq -e '.variants.demoRelease.mapping != null and .variants.demoRelease.mapping != ""' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+            jq -e "$entry.mapping != null and $entry.mapping != \"\"" "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "expected the variant's mapping in the merged map"; exit 1; }
-            echo "merged artifact map pairs apk, aab and mapping for demoRelease"
+            echo "merged artifact map pairs apk, aab and mapping for another_app/demoRelease"
 
   test_simple_apk:
     title: Test simple Android project and APK building
@@ -319,7 +320,7 @@ workflows:
 
             jq -e '.version == 1' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "artifact map schema version is not 1"; exit 1; }
-            jq -e '.variants | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
+            jq -e '[.modules[][]] | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "artifact map has no variants"; exit 1; }
 
             # Every file the map references — variant entries AND unmatched —
@@ -333,4 +334,4 @@ workflows:
                 exit 1
               fi
               echo "artifact map entry exists: $name"
-            done < <(jq -r '(.variants[] | (.mapping // empty), .apk[], .aab[]), (.unmatched | .apk[], .aab[], .mapping[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")
+            done < <(jq -r '(.modules[][] | (.mapping // empty), .apk[], .aab[]), (.unmatched | .apk[], .aab[], .mapping[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")

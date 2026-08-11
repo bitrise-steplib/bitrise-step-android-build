@@ -55,8 +55,10 @@ func Test_artifactMap_PairsVariants(t *testing.T) {
 	m, warnings := artifactmap.Build(apkFiles, aabFiles, mappingFiles)
 
 	assert.Empty(t, warnings)
-	assert.Equal(t, map[string]artifactmap.Entry{
-		"demoRelease": {Module: "app", Mapping: "mapping.txt", AAB: []string{"app-demo-release.aab"}, APK: []string{}},
-		"paidRelease": {Module: "app", Mapping: "mapping-20260805121530.txt", AAB: []string{"app-paid-release.aab"}, APK: []string{}},
-	}, m.Variants)
+	assert.Equal(t, map[string]map[string]artifactmap.Entry{
+		"app": {
+			"demoRelease": {Mapping: "mapping.txt", AAB: []string{"app-demo-release.aab"}, APK: []string{}},
+			"paidRelease": {Mapping: "mapping-20260805121530.txt", AAB: []string{"app-paid-release.aab"}, APK: []string{}},
+		},
+	}, m.Modules)
 }

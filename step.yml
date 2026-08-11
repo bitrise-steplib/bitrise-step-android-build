@@ -202,23 +202,24 @@ outputs:
       each app artifact.
 
       File references inside the document are file names relative to the JSON file's own
-      directory. Example:
+      directory. Entries are keyed by Gradle module, then by variant — build variants are
+      a per-module concept, and two modules can declare the same variant name. Example:
 
       ```
       {
         "version": 1,
-        "variants": {
-          "demoRelease": {
-            "module": "app",
-            "mapping": "mapping.txt",
-            "aab": [],
-            "apk": ["app-demo-release.apk"]
-          },
-          "paidRelease": {
-            "module": "app",
-            "mapping": "mapping-20260805121530.txt",
-            "aab": [],
-            "apk": ["app-paid-release.apk"]
+        "modules": {
+          "app": {
+            "demoRelease": {
+              "mapping": "mapping.txt",
+              "aab": [],
+              "apk": ["app-demo-release.apk"]
+            },
+            "paidRelease": {
+              "mapping": "mapping-20260805121530.txt",
+              "aab": [],
+              "apk": ["app-paid-release.apk"]
+            }
           }
         },
         "unmatched": { "apk": [], "aab": [], "mapping": [] }
@@ -226,6 +227,5 @@ outputs:
       ```
 
       Only the selected **Build type**'s list is populated (`apk` or `aab`). `unmatched`
-      lists exported files whose variant could not be derived from their build output
-      path. When two modules produce the same variant name, the keys are disambiguated
-      as `module/variant`.
+      lists exported files whose module/variant could not be derived from their build
+      output path.
