@@ -259,7 +259,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exportedArtifact, deployDir string) error {
 	apkFiles, aabFiles, mappingFiles := artifactMapFiles(appType, apps, mappings)
 
-	artifactMap, warnings := artifactmap.Build(apkFiles, aabFiles, mappingFiles)
+	artifactMap, warnings := artifactmap.Build(apkFiles, aabFiles, nil, mappingFiles)
 	for _, warning := range warnings {
 		a.logger.Warnf("%s", warning)
 	}
@@ -278,6 +278,10 @@ func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exporte
 		}
 		a.logger.Printf("Merged this build's artifacts into the artifact map written by an earlier step")
 		artifactMap = merged
+	} else if errors.Is(err, artifactmap.ErrNewerVersion) {
+		// a newer step's document must not be destroyed by an older one
+		a.logger.Warnf("Not touching the existing artifact map, this build's artifacts are not added to it: %s", err)
+		return nil
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		a.logger.Warnf("Existing artifact map at %s is unreadable (%s), replacing it", mapPath, err)
 	}
