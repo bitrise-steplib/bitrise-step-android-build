@@ -54,12 +54,15 @@ workflows:
             fullRelease
             demoRelease
     - script:
-        title: Clean up APKs from previous build
+        title: Clean up this workflow's APKs before the compatibility-mode run
         inputs:
         - content: |-
             set -ex
 
-            rm -rf $BITRISE_DEPLOY_DIR/*.apk
+            # only this workflow's own artifacts: the deploy dir is shared with
+            # the other e2e workflows, and the artifact map they merged into
+            # still references theirs
+            rm -fv $BITRISE_DEPLOY_DIR/another_app-*.apk
     - path::./:
         title: Execute step (compatibility mode)
         description: The step used to split multiple variants by the "\n" substring instead of a literal line break
@@ -294,7 +297,7 @@ workflows:
               exit 1
             fi
 
-  # NOTE: this helper asserts `.variants` is non-empty, so only attach it to
+  # NOTE: this helper asserts `.modules` is non-empty, so only attach it to
   # workflows whose build produces variant-attributable artifacts (the standard
   # build/outputs/{apk,bundle,mapping} layout). A map with only `unmatched`
   # entries is contract-conformant but would fail this check.
@@ -323,9 +326,13 @@ workflows:
             jq -e '[.modules[][]] | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "artifact map has no variants"; exit 1; }
 
-            # Every file the map references — variant entries AND unmatched —
-            # must exist next to the map file. read -r keeps file names with
-            # spaces intact.
+            # Every file the map references — variant entries, module AARs AND
+            # unmatched — must exist next to the map file. jq runs first so its
+            # failure fails the check (a process substitution's exit code would
+            # be swallowed), with // [] guards against absent list fields.
+            # read -r keeps file names with spaces intact.
+            refs=$(jq -r '(.modules[][] | (.mapping // empty), (.apk // [])[], (.aab // [])[]), (.module_aars // {} | .[][]), (.unmatched | (.apk // [])[], (.aab // [])[], (.mapping // [])[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH") \
+              || { echo "failed to list the artifact map's file references"; exit 1; }
             map_dir=$(dirname "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")
             while IFS= read -r name; do
               [ -z "$name" ] && continue
@@ -334,4 +341,4 @@ workflows:
                 exit 1
               fi
               echo "artifact map entry exists: $name"
-            done < <(jq -r '(.modules[][] | (.mapping // empty), .apk[], .aab[]), (.unmatched | .apk[], .aab[], .mapping[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")
+            done <<< "$refs"
