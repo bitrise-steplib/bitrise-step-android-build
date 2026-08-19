@@ -42,6 +42,7 @@ workflows:
     - _check_mapping
     # multiple variants with mappings is the artifact map's flagship scenario
     - _check_artifact_map
+    - _check_distinct_variant_mappings
     steps:
     - install-missing-android-tools:
         inputs:
@@ -296,6 +297,34 @@ workflows:
               ls -la $BITRISE_DEPLOY_DIR
               exit 1
             fi
+
+  # Every variant of a module gets its OWN mapping file: both variants' mapping
+  # is named mapping.txt in the build tree, so they collide in the flat deploy
+  # dir — and the disambiguating suffix used to have second resolution, which
+  # let one copy overwrite the other and left both variants pointing at the
+  # survivor. Only attach to workflows that build several minified variants.
+  _check_distinct_variant_mappings:
+    steps:
+    - script:
+        title: Check each variant kept its own mapping file
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            mappings=$(jq -r '[.modules[][] | .mapping // empty]' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH") \
+              || { echo "failed to list the artifact map's mappings"; exit 1; }
+            echo "variant mappings: $mappings"
+            total=$(jq -r 'length' <<< "$mappings")
+            unique=$(jq -r 'unique | length' <<< "$mappings")
+            if [ "$total" -lt 2 ]; then
+              echo "expected at least two variants with a mapping, got $total"
+              exit 1
+            fi
+            if [ "$total" != "$unique" ]; then
+              echo "two variants share a mapping file: one overwrote the other in the deploy dir"
+              exit 1
+            fi
+            echo "all $total variant mappings are distinct files"
 
   # NOTE: this helper asserts `.modules` is non-empty, so only attach it to
   # workflows whose build produces variant-attributable artifacts (the standard

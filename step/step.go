@@ -83,6 +83,10 @@ const (
 
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
+
+	// how many suffixed names freeDeployName tries before it settles for
+	// overwriting — high enough for any real per-variant fan-out
+	maxDeployNameAttempts = 100
 )
 
 // NewAndroidBuild ...
@@ -198,7 +202,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 		envKey = aabEnvKey
 	}
 	if err := a.exporter.ExportOutput(envKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", envKey)
+		return fmt.Errorf("failed to export environment variable %s: %w", envKey, err)
 	}
 	a.logger.Println()
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
@@ -216,7 +220,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 		envKey = aabListEnvKey
 	}
 	if err := a.exporter.ExportOutput(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", envKey)
+		return fmt.Errorf("failed to export environment variable %s: %w", envKey, err)
 	}
 	a.logger.Printf("  Env    [ $%s = %s ]", envKey, paths)
 
@@ -228,7 +232,9 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 	if len(result.mappingFiles) == 0 {
 		a.logger.Printf("No mapping files found with pattern: %s", mappingFilePattern)
 		a.logger.Printf("You might have changed default mapping file export path in your gradle files or obfuscation is not enabled in your project.")
-		return a.exportArtifactMap(result.appType, exportedApps, nil, deployDir)
+		a.exportArtifactMap(result.appType, exportedApps, nil, deployDir)
+
+		return nil
 	}
 
 	exportedMappings, err := a.exportArtifacts(result.mappingFiles, deployDir)
@@ -244,11 +250,13 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 
 	a.logger.Println()
 	if err := a.exporter.ExportOutput(mappingFileEnvKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", mappingFileEnvKey)
+		return fmt.Errorf("failed to export environment variable %s: %w", mappingFileEnvKey, err)
 	}
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
-	return a.exportArtifactMap(result.appType, exportedApps, exportedMappings, deployDir)
+	a.exportArtifactMap(result.appType, exportedApps, exportedMappings, deployDir)
+
+	return nil
 }
 
 // exportArtifactMap writes the variant-keyed artifact map next to the exported
@@ -256,7 +264,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 // flat outputs above, the map records which APK/AAB and which mapping file
 // belong to the same build variant, so a later step (e.g. Google Play deploy)
 // can pair them by identity instead of export order.
-func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exportedArtifact, deployDir string) error {
+func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exportedArtifact, deployDir string) {
 	apkFiles, aabFiles, mappingFiles := artifactMapFiles(appType, apps, mappings)
 
 	artifactMap, warnings := artifactmap.Build(apkFiles, aabFiles, nil, mappingFiles)
@@ -264,7 +272,7 @@ func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exporte
 		a.logger.Warnf("%s", warning)
 	}
 	if artifactMap.IsEmpty() {
-		return nil
+		return
 	}
 
 	// When an earlier step already wrote a map (several build steps in one
@@ -281,16 +289,21 @@ func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exporte
 	} else if errors.Is(err, artifactmap.ErrNewerVersion) {
 		// a newer step's document must not be destroyed by an older one
 		a.logger.Warnf("Not touching the existing artifact map, this build's artifacts are not added to it: %s", err)
-		return nil
+		return
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		a.logger.Warnf("Existing artifact map at %s is unreadable (%s), replacing it", mapPath, err)
 	}
 
+	// The map is an addition to the flat outputs the step already exported, so
+	// a failure here never fails a build that otherwise succeeded — the same
+	// policy as the Gradle Runner step.
 	if err := artifactmap.Write(mapPath, artifactMap); err != nil {
-		return fmt.Errorf("failed to write the artifact map: %v", err)
+		a.logger.Warnf("Failed to write the artifact map: %s", err)
+		return
 	}
 	if err := a.exporter.ExportOutput(artifactmap.EnvKey, mapPath); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", artifactmap.EnvKey)
+		a.logger.Warnf("Failed to export environment variable (%s): %s", artifactmap.EnvKey, err)
+		return
 	}
 	a.logger.Println()
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", artifactmap.EnvKey, artifactmap.DefaultFileName)
@@ -301,8 +314,6 @@ func (a AndroidBuild) exportArtifactMap(appType string, apps, mappings []exporte
 		a.logger.Printf("Artifact map contents:")
 		a.logger.Printf("%s", strings.TrimSuffix(string(doc), "\n"))
 	}
-
-	return nil
 }
 
 // artifactMapFiles converts the exported artifacts into the artifact map's
@@ -466,22 +477,55 @@ func deployPaths(artifacts []exportedArtifact) []string {
 	return paths
 }
 
+// freeDeployName returns a name that no file in the deploy dir holds yet:
+// artifacts of different variants share a base name (every module's mapping is
+// mapping.txt), and the deploy dir is flat. The disambiguating timestamp only
+// has second resolution, so a second suffix is needed when a run exports two
+// same-named files within the same second — without it the second copy silently
+// overwrote the first, and the artifact map then paired two variants with one
+// file that belongs to only one of them.
+func (a AndroidBuild) freeDeployName(deployDir, name string) (string, error) {
+	taken, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, name))
+	if err != nil {
+		return "", err
+	}
+	if !taken {
+		return name, nil
+	}
+
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(filepath.Base(name), ext)
+	timestamp := time.Now().Format("20060102150405")
+
+	candidate := fmt.Sprintf("%s-%s%s", base, timestamp, ext)
+	for attempt := 2; ; attempt++ {
+		taken, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, candidate))
+		if err != nil {
+			return "", err
+		}
+		if !taken {
+			return candidate, nil
+		}
+		if attempt > maxDeployNameAttempts {
+			// keep the last candidate: overwriting one file is a better
+			// outcome than failing a build that otherwise succeeded
+			a.logger.Warnf("Gave up finding a free name for %s in the deploy dir after %d attempts, %s will be overwritten", name, maxDeployNameAttempts, candidate)
+			return candidate, nil
+		}
+		candidate = fmt.Sprintf("%s-%s-%d%s", base, timestamp, attempt, ext)
+	}
+}
+
 func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]exportedArtifact, error) {
 	var exported []exportedArtifact
 	for _, artifact := range artifacts {
-		exists, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, artifact.Name))
+		artifactName := filepath.Base(artifact.Path)
+
+		deployName, err := a.freeDeployName(deployDir, artifact.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check path, error: %v", err)
 		}
-
-		artifactName := filepath.Base(artifact.Path)
-
-		if exists {
-			timestamp := time.Now().Format("20060102150405")
-			ext := filepath.Ext(artifact.Name)
-			name := strings.TrimSuffix(filepath.Base(artifact.Name), ext)
-			artifact.Name = fmt.Sprintf("%s-%s%s", name, timestamp, ext)
-		}
+		artifact.Name = deployName
 
 		a.logger.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, artifact.Name)
 

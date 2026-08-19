@@ -1,12 +1,50 @@
 package step
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bitrise-io/go-android/v2/gradle"
 	"github.com/bitrise-io/go-android/v2/gradle/artifactmap"
+	"github.com/bitrise-io/go-utils/v2/log"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// Test_freeDeployName_SameSecondCollision covers the case that used to lose a
+// file: two variants' mapping.txt copied into the flat deploy dir inside one
+// second. The timestamp suffix alone repeats, so the second copy overwrote the
+// first and the artifact map paired both variants with the survivor.
+func Test_freeDeployName_SameSecondCollision(t *testing.T) {
+	deployDir := t.TempDir()
+	build := AndroidBuild{logger: log.NewLogger(), pathChecker: pathutil.NewPathChecker()}
+
+	// nothing there yet: the artifact keeps its own name
+	first, err := build.freeDeployName(deployDir, "mapping.txt")
+	require.NoError(t, err)
+	assert.Equal(t, "mapping.txt", first)
+	require.NoError(t, os.WriteFile(filepath.Join(deployDir, first), []byte("demoRelease"), 0600))
+
+	second, err := build.freeDeployName(deployDir, "mapping.txt")
+	require.NoError(t, err)
+	assert.NotEqual(t, first, second)
+	require.NoError(t, os.WriteFile(filepath.Join(deployDir, second), []byte("paidRelease"), 0600))
+
+	// the third export lands in the same second as the second one
+	third, err := build.freeDeployName(deployDir, "mapping.txt")
+	require.NoError(t, err)
+	assert.NotEqual(t, second, third, "a same-second collision must not reuse the taken name")
+	require.NoError(t, os.WriteFile(filepath.Join(deployDir, third), []byte("fullRelease"), 0600))
+
+	// each variant's content survives under its own name
+	for name, want := range map[string]string{first: "demoRelease", second: "paidRelease", third: "fullRelease"} {
+		content, err := os.ReadFile(filepath.Join(deployDir, name))
+		require.NoError(t, err)
+		assert.Equal(t, want, string(content), "%s should still hold its own variant's file", name)
+	}
+}
 
 func Test_deployPaths(t *testing.T) {
 	exported := []exportedArtifact{
