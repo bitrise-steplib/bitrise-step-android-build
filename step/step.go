@@ -80,6 +80,10 @@ const (
 
 	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
 	mappingFilePattern = "*build/*/mapping.txt"
+
+	// how many suffixed names freeDeployName tries before it settles for
+	// overwriting — high enough for any real per-variant fan-out
+	maxDeployNameAttempts = 100
 )
 
 // NewAndroidBuild ...
@@ -194,7 +198,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 		envKey = aabEnvKey
 	}
 	if err := a.exporter.ExportOutput(envKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", envKey)
+		return fmt.Errorf("failed to export environment variable %s: %w", envKey, err)
 	}
 	a.logger.Println()
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", envKey, filepath.Base(lastExportedArtifact))
@@ -212,7 +216,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 		envKey = aabListEnvKey
 	}
 	if err := a.exporter.ExportOutput(envKey, strings.Join(exportedArtifactPaths, "|")); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", envKey)
+		return fmt.Errorf("failed to export environment variable %s: %w", envKey, err)
 	}
 	a.logger.Printf("  Env    [ $%s = %s ]", envKey, paths)
 
@@ -240,7 +244,7 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 
 	a.logger.Println()
 	if err := a.exporter.ExportOutput(mappingFileEnvKey, lastExportedArtifact); err != nil {
-		return fmt.Errorf("failed to export environment variable: %s", mappingFileEnvKey)
+		return fmt.Errorf("failed to export environment variable %s: %w", mappingFileEnvKey, err)
 	}
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
 
@@ -372,22 +376,56 @@ func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPath
 	a.logger.Println()
 }
 
+// freeDeployName returns a name that no file in the deploy dir holds yet.
+// Artifacts of different variants share a base name (every module's mapping
+// file is mapping.txt) and the deploy dir is flat, so a colliding name gets a
+// timestamp. That timestamp only has second resolution, so a run exporting two
+// same-named files within the same second needs a further suffix — without it
+// the second copy silently overwrote the first, and both variants' outputs
+// pointed at a file that belongs to only one of them.
+func (a AndroidBuild) freeDeployName(deployDir, name string) (string, error) {
+	taken, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, name))
+	if err != nil {
+		return "", err
+	}
+	if !taken {
+		return name, nil
+	}
+
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(filepath.Base(name), ext)
+	timestamp := time.Now().Format("20060102150405")
+
+	candidate := fmt.Sprintf("%s-%s%s", base, timestamp, ext)
+	for attempt := 2; ; attempt++ {
+		taken, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, candidate))
+		if err != nil {
+			return "", err
+		}
+		if !taken {
+			return candidate, nil
+		}
+		if attempt > maxDeployNameAttempts {
+			// keep the last candidate: overwriting one file is a better
+			// outcome than failing a build that otherwise succeeded
+			a.logger.Warnf("Gave up finding a free name for %s in the deploy dir after %d attempts, %s will be overwritten", name, maxDeployNameAttempts, candidate)
+
+			return candidate, nil
+		}
+		candidate = fmt.Sprintf("%s-%s-%d%s", base, timestamp, attempt, ext)
+	}
+}
+
 func (a AndroidBuild) exportArtifacts(artifacts []gradle.Artifact, deployDir string) ([]string, error) {
 	var paths []string
 	for _, artifact := range artifacts {
-		exists, err := a.pathChecker.IsPathExists(filepath.Join(deployDir, artifact.Name))
+		artifactName := filepath.Base(artifact.Path)
+
+		deployName, err := a.freeDeployName(deployDir, artifact.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check path, error: %v", err)
 		}
-
-		artifactName := filepath.Base(artifact.Path)
-
-		if exists {
-			timestamp := time.Now().Format("20060102150405")
-			ext := filepath.Ext(artifact.Name)
-			name := strings.TrimSuffix(filepath.Base(artifact.Name), ext)
-			artifact.Name = fmt.Sprintf("%s-%s%s", name, timestamp, ext)
-		}
+		artifact.Name = deployName
 
 		a.logger.Printf("  Export [ %s => $BITRISE_DEPLOY_DIR/%s ]", artifactName, artifact.Name)
 
