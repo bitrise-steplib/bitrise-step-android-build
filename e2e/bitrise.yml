@@ -355,12 +355,12 @@ workflows:
             jq -e '[.modules[][]] | length > 0' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH" > /dev/null \
               || { echo "artifact map has no variants"; exit 1; }
 
-            # Every file the map references — variant entries, module AARs AND
-            # unmatched — must exist next to the map file. jq runs first so its
-            # failure fails the check (a process substitution's exit code would
-            # be swallowed), with // [] guards against absent list fields.
+            # Every file the map references — variant entries AND unmatched —
+            # must exist next to the map file. jq runs first so its failure
+            # fails the check (a process substitution's exit code would be
+            # swallowed), with // [] guards against absent list fields.
             # read -r keeps file names with spaces intact.
-            refs=$(jq -r '(.modules[][] | (.mapping // empty), (.apk // [])[], (.aab // [])[]), (.module_aars // {} | .[][]), (.unmatched | (.apk // [])[], (.aab // [])[], (.mapping // [])[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH") \
+            refs=$(jq -r '(.modules[][] | (.mapping // empty), (.apk // [])[], (.aab // [])[], (.aar // [])[]), (.unmatched | (.apk // [])[], (.aab // [])[], (.aar // [])[], (.mapping // [])[])' "$BITRISE_ANDROID_ARTIFACT_MAP_PATH") \
               || { echo "failed to list the artifact map's file references"; exit 1; }
             map_dir=$(dirname "$BITRISE_ANDROID_ARTIFACT_MAP_PATH")
             while IFS= read -r name; do
