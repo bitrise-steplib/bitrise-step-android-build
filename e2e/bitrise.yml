@@ -34,6 +34,10 @@ workflows:
     - EXPECTED_APK: another_app-full-release-unsigned.apk
     - EXPECTED_APK_PATH_LIST: $BITRISE_DEPLOY_DIR/another_app-demo-release-unsigned.apk|$BITRISE_DEPLOY_DIR/another_app-full-release-unsigned.apk
     - EXPECTED_MAPPING: another_app-mapping.txt
+    # demo and full are both built, so both variants publish a mapping.txt; the
+    # second one is collision-renamed in the deploy dir and is only reachable
+    # through BITRISE_MAPPING_PATH_LIST.
+    - EXPECTED_MAPPING_COUNT: "2"
     - JDK_VERSION: "17"
     before_run:
     - _setup
@@ -247,3 +251,35 @@ workflows:
               ls -la $BITRISE_DEPLOY_DIR
               exit 1
             fi
+
+            echo "BITRISE_MAPPING_PATH_LIST: $BITRISE_MAPPING_PATH_LIST"
+
+            if [ -z "$BITRISE_MAPPING_PATH_LIST" ] ; then echo "BITRISE_MAPPING_PATH_LIST env is empty" ; exit 1 ; fi ;
+
+            # Every mapping the build published must be reachable, not just the last
+            # one. This is what lets a consumer pair each artifact with its own mapping
+            # by pg_map_id; BITRISE_MAPPING_PATH alone cannot express two variants.
+            expected_count="${EXPECTED_MAPPING_COUNT:-1}"
+            listed_files=$(printf '%s' "$BITRISE_MAPPING_PATH_LIST" | tr '|' '\n' | grep . | sort)
+            listed_count=$(printf '%s' "$listed_files" | grep -c . || true)
+            if [ "$listed_count" -ne "$expected_count" ] ; then
+              echo "Expected $expected_count path(s) in BITRISE_MAPPING_PATH_LIST, got $listed_count"
+              exit 1
+            fi
+
+            # Herestring, not a pipe: a piped `while read` runs in a subshell where
+            # `exit 1` would not fail this script.
+            while read -r file ; do
+              if [ ! -f "$file" ] ; then
+                echo "Listed mapping file does not exist: '$file'"
+                ls -la $BITRISE_DEPLOY_DIR
+                exit 1
+              fi
+              if ! grep -q "^# pg_map_id: " "$file" ; then
+                echo "Listed mapping has no pg_map_id header, pairing would be impossible: $file"
+                head -5 "$file"
+                exit 1
+              fi
+            done <<< "$listed_files"
+
+            echo "OK: all $listed_count published mapping file(s) are listed and carry a pg_map_id"

@@ -109,7 +109,8 @@ Build a release AAB:
 | `BITRISE_APK_PATH_LIST` | This output will include the paths of the generated APKs after filtering based on the filter inputs. The paths are separated with `\|` character, for example, `app-armeabi-v7a-debug.apk\|app-mips-debug.apk\|app-x86-debug.apk` |
 | `BITRISE_AAB_PATH` | This output will include the path of the generated AAB after filtering based on the filter inputs. If the build generates more than one AAB which fulfills the filter inputs, this output will contain the last one's path. |
 | `BITRISE_AAB_PATH_LIST` | This output will include the paths of the generated AABs after filtering based on the filter inputs. The paths are separated with `\|` character, for example, `app--debug.aab\|app-mips-debug.aab` |
-| `BITRISE_MAPPING_PATH` | This output will include the path of the generated mapping.txt. If more than one mapping.txt exist in the project, this output will contain the last one's path. |
+| `BITRISE_MAPPING_PATH` | This output will include the path of the generated mapping.txt.  If more than one mapping.txt exist in the project, this output will contain the last one's path. When the build produces more than one mapping file, use `BITRISE_MAPPING_PATH_LIST` instead: it contains all of them. |
+| `BITRISE_MAPPING_PATH_LIST` | This output will include the paths of the generated mapping files. The paths are separated with `\|` character, for example, `app-mapping.txt\|another_app-mapping.txt`  The order of the list carries no meaning, and the file names do not identify which build variant a mapping belongs to. Consumers should pair a mapping with its artifact by reading the `# pg_map_id:` header of the mapping file and matching it against the `pg-map-id` of the R8 marker embedded in the artifact, rather than relying on order or on the file name. |
 </details>
 
 ## 🙋 Contributing

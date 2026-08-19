@@ -78,8 +78,9 @@ const (
 	aabEnvKey     = "BITRISE_AAB_PATH"
 	aabListEnvKey = "BITRISE_AAB_PATH_LIST"
 
-	mappingFileEnvKey  = "BITRISE_MAPPING_PATH"
-	mappingFilePattern = "*build/*/mapping.txt"
+	mappingFileEnvKey     = "BITRISE_MAPPING_PATH"
+	mappingFileListEnvKey = "BITRISE_MAPPING_PATH_LIST"
+	mappingFilePattern    = "*build/*/mapping.txt"
 )
 
 // NewAndroidBuild ...
@@ -243,6 +244,12 @@ func (a AndroidBuild) Export(result Result, deployDir string) error {
 		return fmt.Errorf("failed to export environment variable: %s", mappingFileEnvKey)
 	}
 	a.logger.Printf("  Env    [ $%s = $BITRISE_DEPLOY_DIR/%s ]", mappingFileEnvKey, filepath.Base(lastExportedArtifact))
+
+	mappingList := strings.Join(exportedArtifactPaths, "|")
+	if err := a.exporter.ExportOutput(mappingFileListEnvKey, mappingList); err != nil {
+		return fmt.Errorf("failed to export environment variable: %s", mappingFileListEnvKey)
+	}
+	a.logger.Printf("  Env    [ $%s = %s ]", mappingFileListEnvKey, mappingList)
 
 	return nil
 }
