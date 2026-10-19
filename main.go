@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/errorutil"
 	"github.com/bitrise-io/go-utils/v2/fileutil"
 	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/bitrise-steplib/bitrise-step-android-build/step"
@@ -26,20 +28,26 @@ func run() int {
 
 	config, err := androidBuild.ProcessConfig()
 	if err != nil {
-		logger.Errorf("Process config: %s", err.Error())
+		logFailure(logger, "Process config", err)
 		return 1
 	}
 
 	result, err := androidBuild.Run(config)
 	if err != nil {
-		logger.Errorf("Run: %s", err.Error())
+		logFailure(logger, "Run", err)
 		return 1
 	}
 
 	if err := androidBuild.Export(result, config.DeployDir); err != nil {
-		logger.Errorf("Export outputs: %s", err.Error())
+		logFailure(logger, "Export outputs", err)
 		return 1
 	}
 
 	return 0
+}
+
+// logFailure prints the error as the layers that led to it, with the reason the failing tool gave as
+// the last one. The message is an argument, never the format string: tool output can contain a %.
+func logFailure(logger log.Logger, phase string, err error) {
+	logger.Errorf("%s", errorutil.FormattedError(fmt.Errorf("%s: %w", phase, err)))
 }

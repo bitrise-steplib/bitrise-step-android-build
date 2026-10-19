@@ -88,7 +88,7 @@ func Test_buildGradleCommand_NoWrapWhenCLIMissing(t *testing.T) {
 		return wrap.Detection{}
 	}
 
-	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
+	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, command.Opts{})
 
 	assert.Equal(t, `/tmp/proj/gradlew "assembleDebug"`, cmd.PrintableCommandArgs())
 }
@@ -100,7 +100,7 @@ func Test_buildGradleCommand_NoWrapWhenDetected_NotEnabled(t *testing.T) {
 		return wrap.Detection{CLIPath: "/usr/local/bin/bitrise-build-cache"}
 	}
 
-	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, &command.Opts{})
+	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug"}, command.Opts{})
 
 	assert.Equal(t, `/tmp/proj/gradlew "assembleDebug"`, cmd.PrintableCommandArgs())
 }
@@ -113,7 +113,7 @@ func Test_buildGradleCommand_WrapsWhenRNCacheEnabled(t *testing.T) {
 		return wrap.Detection{CLIPath: cliPath, ReactNativeEnabled: true}
 	}
 
-	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug", "--info"}, &command.Opts{})
+	cmd := step.buildGradleCommand(context.Background(), "/tmp/proj/gradlew", []string{"assembleDebug", "--info"}, command.Opts{})
 
 	expected := fmt.Sprintf(`%s "react-native" "run" "--" "/tmp/proj/gradlew" "assembleDebug" "--info"`, cliPath)
 	assert.Equal(t, expected, cmd.PrintableCommandArgs())
