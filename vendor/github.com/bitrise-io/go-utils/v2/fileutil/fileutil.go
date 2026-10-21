@@ -26,7 +26,6 @@ type FileManager interface {
 	WriteBytes(path string, value []byte) error
 	FileSizeInBytes(pth string) (int64, error)
 	CopyFile(src, dst string, opts *CopyOptions) error
-	CopyFileFS(fsys fs.FS, src, dst string, opts *CopyOptions) error
 	CopyDir(src, dst string, opts *CopyOptions) error
 	Lstat(path string) (os.FileInfo, error)
 	LastNLines(s string, n int) string

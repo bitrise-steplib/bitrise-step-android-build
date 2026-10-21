@@ -322,7 +322,7 @@ func (a AndroidBuild) executeGradleBuild(ctx context.Context, cfg Config) error 
 	}
 	gradlewPath := filepath.Join(absPath, "gradlew")
 
-	cmd := a.buildGradleCommand(ctx, gradlewPath, cmdArgs, cmdOpts)
+	cmd := a.buildGradleCommand(ctx, gradlewPath, cmdArgs, &cmdOpts)
 
 	a.logger.Println()
 	a.logger.Donef("$ " + cmd.PrintableCommandArgs())
@@ -347,7 +347,7 @@ func defaultDetect(ctx context.Context, logger log.Logger) wrap.Detection {
 // CLI is installed and React Native build cache is active on this machine.
 // When no wrap is needed (CLI absent, probe failed, or RN cache not activated),
 // the original `gradlew ...` command is returned unchanged.
-func (a AndroidBuild) buildGradleCommand(ctx context.Context, gradlewPath string, cmdArgs []string, cmdOpts command.Opts) gradle.Command {
+func (a AndroidBuild) buildGradleCommand(ctx context.Context, gradlewPath string, cmdArgs []string, cmdOpts *command.Opts) command.Command {
 	det := a.detect(ctx, a.logger)
 	if det.ReactNativeEnabled {
 		a.logger.Infof("Bitrise Build Cache: React Native cache active — wrapping gradle with %s", det.CLIPath)
@@ -355,7 +355,7 @@ func (a AndroidBuild) buildGradleCommand(ctx context.Context, gradlewPath string
 
 	name, args := wrap.Wrap(det, gradlewPath, cmdArgs)
 
-	return gradle.NewCommand(a.cmdFactory, name, args, cmdOpts)
+	return a.cmdFactory.Create(name, args, cmdOpts)
 }
 
 func (a AndroidBuild) printAppSearchInfo(appArtifacts []gradle.Artifact, appPathPatterns []string) {
