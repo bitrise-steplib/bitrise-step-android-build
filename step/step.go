@@ -329,7 +329,7 @@ func (a AndroidBuild) executeGradleBuild(ctx context.Context, cfg Config) error 
 	a.logger.Println()
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("build task failed: %v", err)
+		return fmt.Errorf("build task failed: %w", err)
 	}
 
 	return nil
