@@ -10,8 +10,12 @@ import (
 )
 
 const (
-	wentWrongHeader       = "* What went wrong:"
-	executionFailedPrefix = "Execution failed for task "
+	wentWrongHeader = "* What went wrong:"
+
+	// gradleCauseIndent is how far Gradle indents a cause under the one it belongs to.
+	gradleCauseIndent = 3
+	// reasonIndent is how far a reported line is indented under the one it is a detail of.
+	reasonIndent = "  "
 
 	maxCompilerErrors = 3
 	maxTestFailures   = 3
@@ -31,13 +35,21 @@ var (
 // Matcher turns the lines of a Gradle run into the findings behind the failure. It is a state machine,
 // so it has to see the lines in the order they were written, and one at a time.
 type Matcher struct {
+	blockLines     []blockLine
+	blockDetail    string
 	compilerErrors []compilerError
 	failedTests    []failedTest
-	blockLines     []string
 	failedTasks    []string
 
 	inBlock         bool
 	afterFailedTest bool
+}
+
+// blockLine is one line of the "* What went wrong:" block. Gradle opens the block with the problem and
+// indents each cause under the one it belongs to, which is the shape of the answer.
+type blockLine struct {
+	text  string
+	depth int
 }
 
 type compilerError struct {
@@ -68,7 +80,7 @@ func (m *Matcher) ConsumeLine(line string) {
 	afterFailedTest := m.afterFailedTest
 	m.afterFailedTest = false
 
-	if line == wentWrongHeader {
+	if strings.TrimSpace(line) == wentWrongHeader {
 		m.inBlock = true
 
 		return
@@ -106,19 +118,16 @@ func (m *Matcher) ConsumeLine(line string) {
 	}
 }
 
-// Reasons returns the findings, most specific first, or nothing when no line matched, in which case
-// the caller keeps its own generic message rather than showing a guess.
-//
-// Compiler errors come before the failure block because for Kotlin the block only says
-// "Compilation error. See log for more details".
+// Reasons returns the findings, nested under the Gradle failure they belong to, or nothing when no line
+// matched, in which case the caller keeps its own generic message rather than showing a guess.
 func (m *Matcher) Reasons() []string {
 	switch {
 	case len(m.compilerErrors) > 0:
-		return m.compilerErrorLines()
+		return m.nestUnderBlock(m.compilerErrorLines())
 	case len(m.failedTests) > 0:
-		return m.failedTestLines()
+		return m.nestUnderBlock(m.failedTestLines())
 	case len(m.blockLines) > 0:
-		return m.blockLines
+		return m.nestUnderBlock(nil)
 	case len(m.failedTasks) > 0:
 		return []string{fmt.Sprintf("Gradle task %s failed", strings.Join(m.failedTasks, ", "))}
 	default:
@@ -135,18 +144,32 @@ func (m *Matcher) consumeBlockLine(line string) bool {
 		return false
 	}
 
+	indent := len(line) - len(strings.TrimLeft(line, " "))
 	trimmed := strings.TrimSpace(line)
-	if trimmed == "" || len(m.blockLines) >= maxBlockLines || slices.Contains(m.blockLines, trimmed) {
+	if trimmed == "" || len(m.blockLines) >= maxBlockLines {
 		return true
 	}
 
 	// Gradle opens the block with the problem and starts each nested cause with "> ". The rest is detail
 	// (searched locations, "Required by") that makes the message long without saying more.
-	if len(m.blockLines) == 0 || strings.HasPrefix(trimmed, "> ") {
-		m.blockLines = append(m.blockLines, trimmed)
+	switch cause, isCause := strings.CutPrefix(trimmed, "> "); {
+	case len(m.blockLines) == 0:
+		m.addBlockLine(trimmed, 0)
+	case isCause:
+		m.addBlockLine(cause, indent/gradleCauseIndent+1)
+	case len(m.blockLines) == 1 && m.blockDetail == "":
+		m.blockDetail = trimmed
 	}
 
 	return true
+}
+
+func (m *Matcher) addBlockLine(text string, depth int) {
+	if slices.ContainsFunc(m.blockLines, func(l blockLine) bool { return l.text == text }) {
+		return
+	}
+
+	m.blockLines = append(m.blockLines, blockLine{text: text, depth: depth})
 }
 
 func (m *Matcher) addCompilerError(e compilerError) {
@@ -155,9 +178,40 @@ func (m *Matcher) addCompilerError(e compilerError) {
 	}
 }
 
-func (m *Matcher) compilerErrorLines() []string {
-	lines := m.failedTaskLines()
+// nestUnderBlock puts the findings under the Gradle failure block, one level deeper than its last
+// cause. That cause is dropped, because it is the one the findings answer: for a Kotlin failure it only
+// says "Compilation error. See log for more details".
+func (m *Matcher) nestUnderBlock(findings []string) []string {
+	block := m.effectiveBlockLines()
+	if len(findings) > 0 && len(block) > 1 {
+		block = block[:len(block)-1]
+	}
 
+	var lines []string
+	depth := 0
+	for _, line := range block {
+		lines = append(lines, strings.Repeat(reasonIndent, line.depth)+line.text)
+		depth = line.depth + 1
+	}
+	for _, finding := range findings {
+		lines = append(lines, strings.Repeat(reasonIndent, depth)+finding)
+	}
+
+	return lines
+}
+
+// effectiveBlockLines adds the line under the problem when Gradle gave no causes for it. A task that
+// does not exist is reported that way, and the problem on its own reads "Selection failed".
+func (m *Matcher) effectiveBlockLines() []blockLine {
+	if len(m.blockLines) != 1 || m.blockDetail == "" {
+		return m.blockLines
+	}
+
+	return []blockLine{m.blockLines[0], {text: m.blockDetail, depth: 1}}
+}
+
+func (m *Matcher) compilerErrorLines() []string {
+	var lines []string
 	for _, e := range m.compilerErrors[:min(len(m.compilerErrors), maxCompilerErrors)] {
 		location := e.file + ":" + e.line
 		if e.column != "" {
@@ -174,12 +228,11 @@ func (m *Matcher) compilerErrorLines() []string {
 }
 
 func (m *Matcher) failedTestLines() []string {
-	lines := m.failedTaskLines()
-
+	var lines []string
 	for _, t := range m.failedTests[:min(len(m.failedTests), maxTestFailures)] {
 		lines = append(lines, t.name)
 		if t.detail != "" {
-			lines = append(lines, "  "+t.detail)
+			lines = append(lines, reasonIndent+t.detail)
 		}
 	}
 
@@ -188,15 +241,4 @@ func (m *Matcher) failedTestLines() []string {
 	}
 
 	return lines
-}
-
-// failedTaskLines names the task the findings belong to, which the findings themselves do not say.
-func (m *Matcher) failedTaskLines() []string {
-	for _, line := range m.blockLines {
-		if strings.HasPrefix(line, executionFailedPrefix) {
-			return []string{line}
-		}
-	}
-
-	return nil
 }
