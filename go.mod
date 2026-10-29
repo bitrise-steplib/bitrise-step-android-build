@@ -4,9 +4,9 @@ go 1.24.0
 
 require (
 	github.com/bitrise-io/bitrise-build-cache-cli/v2 v2.6.0
-	github.com/bitrise-io/go-android/v2 v2.0.0-alpha.20.0.20261029104502-4d703b4e9c6d
+	github.com/bitrise-io/go-android/v2 v2.0.0-alpha.20.0.20261029105842-02b6aa974feb
 	github.com/bitrise-io/go-steputils/v2 v2.0.0-alpha.50
-	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.40.0.20261029103755-e3446bf21377
+	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.40.0.20261029105751-e78ddffb451e
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.34.0

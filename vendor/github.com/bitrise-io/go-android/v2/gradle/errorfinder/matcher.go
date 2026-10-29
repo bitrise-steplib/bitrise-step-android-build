@@ -229,10 +229,12 @@ func (m *Matcher) compilerErrorLines() []string {
 
 func (m *Matcher) failedTestLines() []string {
 	var lines []string
+	// The detail sits beside its test rather than under it: the reasons state one path down to the
+	// findings, and a line stepping back out to the next test could not be shown as a step back.
 	for _, t := range m.failedTests[:min(len(m.failedTests), maxTestFailures)] {
 		lines = append(lines, t.name)
 		if t.detail != "" {
-			lines = append(lines, reasonIndent+t.detail)
+			lines = append(lines, t.detail)
 		}
 	}
 
