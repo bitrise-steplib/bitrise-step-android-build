@@ -10,6 +10,7 @@ import (
 
 	"github.com/bitrise-io/bitrise-build-cache-cli/v2/pkg/reactnative/wrap"
 	"github.com/bitrise-io/go-android/v2/gradle"
+	"github.com/bitrise-io/go-android/v2/gradle/errorfinder"
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
 	"github.com/bitrise-io/go-utils/v2/command"
@@ -312,9 +313,10 @@ func (a AndroidBuild) executeGradleBuild(ctx context.Context, cfg Config) error 
 
 	cmdArgs := append(tasks, cfg.Arguments...)
 	cmdOpts := command.Opts{
-		Dir:    cfg.ProjectLocation,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Dir:          cfg.ProjectLocation,
+		Stdout:       os.Stdout,
+		Stderr:       os.Stderr,
+		ErrorMatcher: errorfinder.NewMatcher(),
 	}
 	absPath, err := filepath.Abs(cfg.ProjectLocation)
 	if err != nil {
