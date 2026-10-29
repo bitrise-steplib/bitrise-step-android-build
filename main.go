@@ -28,18 +28,18 @@ func run() int {
 
 	config, err := androidBuild.ProcessConfig()
 	if err != nil {
-		logFailure(logger, "Process config", err)
+		logFailure(logger, "Failed to process Step inputs", err)
 		return 1
 	}
 
 	result, err := androidBuild.Run(config)
 	if err != nil {
-		logFailure(logger, "Run", err)
+		logFailure(logger, "Failed to execute Step main logic", err)
 		return 1
 	}
 
 	if err := androidBuild.Export(result, config.DeployDir); err != nil {
-		logFailure(logger, "Export outputs", err)
+		logFailure(logger, "Failed to export Step outputs", err)
 		return 1
 	}
 
@@ -48,6 +48,6 @@ func run() int {
 
 // logFailure prints the error as the layers that led to it, with the reason the failing tool gave as
 // the last one. The message is an argument, never the format string: tool output can contain a %.
-func logFailure(logger log.Logger, phase string, err error) {
-	logger.Errorf("%s", errorutil.FormattedError(fmt.Errorf("%s: %w", phase, err)))
+func logFailure(logger log.Logger, failure string, err error) {
+	logger.Errorf("%s", errorutil.FormattedError(fmt.Errorf("%s: %w", failure, err)))
 }
