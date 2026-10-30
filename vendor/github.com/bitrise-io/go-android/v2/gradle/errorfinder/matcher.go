@@ -153,6 +153,12 @@ func (m *Matcher) consumeBlockLine(line string) bool {
 		return false
 	}
 
+	// Both of Gradle's streams feed the matcher, so a task line written to stdout can arrive while the
+	// block on stderr is open. It opens with the same mark as a cause, but it is not one.
+	if failedTaskRegexp.MatchString(line) {
+		return false
+	}
+
 	indent := len(line) - len(strings.TrimLeft(line, " "))
 	trimmed := strings.TrimSpace(line)
 	if trimmed == "" || len(m.blockLines) >= maxBlockLines {
