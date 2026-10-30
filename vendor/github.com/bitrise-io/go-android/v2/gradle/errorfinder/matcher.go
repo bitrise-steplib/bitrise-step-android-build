@@ -16,10 +16,16 @@ const (
 	gradleCauseIndent = 3
 	// reasonIndent is how far a reported line is indented under the one it is a detail of.
 	reasonIndent = "  "
+	// diagnosticMark is what a tool writes in front of the problem it found. A cause's own lines are
+	// reported only when they carry it, so that prose stays out of the reason.
+	diagnosticMark = "error: "
+	// caretLine marks the column of the line above it, and points nowhere once the reason is reindented.
+	caretLine = "^"
 
 	maxCompilerErrors = 3
 	maxTestFailures   = 3
 	maxBlockLines     = 10
+	maxDetailLines    = 10
 )
 
 var (
@@ -36,7 +42,6 @@ var (
 // so it has to see the lines in the order they were written, and one at a time.
 type Matcher struct {
 	blockLines     []blockLine
-	blockDetail    string
 	compilerErrors []compilerError
 	failedTests    []failedTest
 	failedTasks    []string
@@ -50,6 +55,8 @@ type Matcher struct {
 type blockLine struct {
 	text  string
 	depth int
+	// detail is the rest of the line's message, which Gradle writes under it at its own column.
+	detail []string
 }
 
 type compilerError struct {
@@ -121,13 +128,15 @@ func (m *Matcher) ConsumeLine(line string) {
 // Reasons returns the findings, nested under the Gradle failure they belong to, or nothing when no line
 // matched, in which case the caller keeps its own generic message rather than showing a guess.
 func (m *Matcher) Reasons() []string {
-	switch {
+	switch detail := m.causeDetailLines(); {
+	case len(detail) > 0:
+		return m.nestUnderBlock(m.effectiveBlockLines(), detail)
 	case len(m.compilerErrors) > 0:
-		return m.nestUnderBlock(m.compilerErrorLines())
+		return m.nestUnderBlock(m.blockLinesWithoutAnsweredCause(), m.compilerErrorLines())
 	case len(m.failedTests) > 0:
-		return m.nestUnderBlock(m.failedTestLines())
+		return m.nestUnderBlock(m.blockLinesWithoutAnsweredCause(), m.failedTestLines())
 	case len(m.blockLines) > 0:
-		return m.nestUnderBlock(nil)
+		return m.nestUnderBlock(m.effectiveBlockLines(), nil)
 	case len(m.failedTasks) > 0:
 		return []string{fmt.Sprintf("Gradle task %s failed", strings.Join(m.failedTasks, ", "))}
 	default:
@@ -150,15 +159,16 @@ func (m *Matcher) consumeBlockLine(line string) bool {
 		return true
 	}
 
-	// Gradle opens the block with the problem and starts each nested cause with "> ". The rest is detail
-	// (searched locations, "Required by") that makes the message long without saying more.
+	// Gradle opens the block with the problem and starts each nested cause with "> ". What follows a
+	// line without that mark is the rest of its message.
 	switch cause, isCause := strings.CutPrefix(trimmed, "> "); {
 	case len(m.blockLines) == 0:
 		m.addBlockLine(trimmed, 0)
 	case isCause:
 		m.addBlockLine(cause, indent/gradleCauseIndent+1)
-	case len(m.blockLines) == 1 && m.blockDetail == "":
-		m.blockDetail = trimmed
+	default:
+		last := &m.blockLines[len(m.blockLines)-1]
+		last.detail = append(last.detail, trimmed)
 	}
 
 	return true
@@ -178,15 +188,8 @@ func (m *Matcher) addCompilerError(e compilerError) {
 	}
 }
 
-// nestUnderBlock puts the findings under the Gradle failure block, one level deeper than its last
-// cause. That cause is dropped, because it is the one the findings answer: for a Kotlin failure it only
-// says "Compilation error. See log for more details".
-func (m *Matcher) nestUnderBlock(findings []string) []string {
-	block := m.effectiveBlockLines()
-	if len(findings) > 0 && len(block) > 1 {
-		block = block[:len(block)-1]
-	}
-
+// nestUnderBlock puts the findings under the Gradle failure block, one level deeper than its last line.
+func (m *Matcher) nestUnderBlock(block []blockLine, findings []string) []string {
 	var lines []string
 	depth := 0
 	for _, line := range block {
@@ -200,14 +203,54 @@ func (m *Matcher) nestUnderBlock(findings []string) []string {
 	return lines
 }
 
+// causeDetailLines returns the rest of the deepest cause's message, when it is the failing tool's own
+// diagnostics. A cause whose message carries on in prose keeps it out of the reason: a dependency that
+// cannot be resolved lists the repositories searched for it, which says no more than the cause itself.
+func (m *Matcher) causeDetailLines() []string {
+	if len(m.blockLines) < 2 {
+		return nil
+	}
+
+	detail := m.blockLines[len(m.blockLines)-1].detail
+	if !slices.ContainsFunc(detail, func(line string) bool { return strings.Contains(line, diagnosticMark) }) {
+		return nil
+	}
+
+	var lines []string
+	for _, line := range detail {
+		if line == caretLine {
+			continue
+		}
+
+		lines = append(lines, line)
+	}
+
+	if more := len(lines) - maxDetailLines; more > 0 {
+		lines = append(lines[:maxDetailLines], fmt.Sprintf("... and %d more lines", more))
+	}
+
+	return lines
+}
+
 // effectiveBlockLines adds the line under the problem when Gradle gave no causes for it. A task that
 // does not exist is reported that way, and the problem on its own reads "Selection failed".
 func (m *Matcher) effectiveBlockLines() []blockLine {
-	if len(m.blockLines) != 1 || m.blockDetail == "" {
+	if len(m.blockLines) != 1 || len(m.blockLines[0].detail) == 0 {
 		return m.blockLines
 	}
 
-	return []blockLine{m.blockLines[0], {text: m.blockDetail, depth: 1}}
+	return []blockLine{m.blockLines[0], {text: m.blockLines[0].detail[0], depth: 1}}
+}
+
+// blockLinesWithoutAnsweredCause drops the deepest cause, the one that findings taken from the log
+// answer: for a Kotlin failure it only says "Compilation error. See log for more details".
+func (m *Matcher) blockLinesWithoutAnsweredCause() []blockLine {
+	block := m.effectiveBlockLines()
+	if len(block) < 2 {
+		return block
+	}
+
+	return block[:len(block)-1]
 }
 
 func (m *Matcher) compilerErrorLines() []string {
