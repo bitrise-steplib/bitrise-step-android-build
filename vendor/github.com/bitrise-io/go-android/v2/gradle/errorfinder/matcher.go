@@ -21,6 +21,11 @@ const (
 	diagnosticMark = "error: "
 	// caretLine marks the column of the line above it, and points nowhere once the reason is reindented.
 	caretLine = "^"
+	// taskLinePrefix and incubatingPrefix open the lines Gradle writes about the run itself. Both of its
+	// streams feed the matcher, so one of them can arrive while the failure block is open, where it is
+	// neither the problem nor one of its causes.
+	taskLinePrefix   = "> Task :"
+	incubatingPrefix = "[Incubating] "
 
 	maxCompilerErrors = 3
 	maxTestFailures   = 3
@@ -153,9 +158,7 @@ func (m *Matcher) consumeBlockLine(line string) bool {
 		return false
 	}
 
-	// Both of Gradle's streams feed the matcher, so a task line written to stdout can arrive while the
-	// block on stderr is open. It opens with the same mark as a cause, but it is not one.
-	if failedTaskRegexp.MatchString(line) {
+	if strings.HasPrefix(line, taskLinePrefix) || strings.HasPrefix(line, incubatingPrefix) {
 		return false
 	}
 
